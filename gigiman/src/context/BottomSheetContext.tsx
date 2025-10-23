@@ -77,7 +77,7 @@ export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-     backgroundColor: 'rgba(91, 88, 88, 0.4)',
+    backgroundColor: 'rgba(91, 88, 88, 0.4)',
   },
   sheetContainer: {
     //backgroundColor: 'rgba(217, 214, 214, 0.4)',
