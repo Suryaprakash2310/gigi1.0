@@ -146,8 +146,8 @@ export default function BottomButton({
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    bottom: 0,
+    //position: "absolute",
+    //bottom: 0,
     width: "100%",
     backgroundColor: "transparent",
     alignItems: "center",

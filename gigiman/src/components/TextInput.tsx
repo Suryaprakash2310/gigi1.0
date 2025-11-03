@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  KeyboardTypeOptions,
 } from 'react-native';
 
 interface Props {
@@ -13,8 +14,8 @@ interface Props {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
-  error?: string;
-  keyboardType?: string;
+  error?: string | null;
+  keyboardType?: KeyboardTypeOptions;
   secureTextEntry?: boolean;
 }
 
@@ -67,7 +68,7 @@ const FloatingLabelInput: React.FC<Props> = ({
               ? '#FF4D4F'
               : isFocused
               ? 'black'
-              : '#E0E0E0',
+              : '#4a4949ff',
           },
         ]}
       >
@@ -77,7 +78,7 @@ const FloatingLabelInput: React.FC<Props> = ({
           value={value}
           onChangeText={onChangeText}
           style={styles.input}
-          //keyboardType={keyboardType}
+          keyboardType={keyboardType}
           secureTextEntry={secureTextEntry}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -85,10 +86,12 @@ const FloatingLabelInput: React.FC<Props> = ({
           blurOnSubmit
           placeholder={isFocused ? placeholder : ''}
           placeholderTextColor="#999"
+          
+          
         />
       </View>
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error ? <Text style={styles.errorText}>{error} </Text> : null}
     </View>
   );
 };
@@ -97,7 +100,7 @@ export default FloatingLabelInput;
 
 const styles = StyleSheet.create({
   container: {
-    width: '90%',
+    width: '100%',
     //marginBottom: 20,
   },
   inputContainer: {
@@ -109,10 +112,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   input: {
-    fontSize: 16,
-    color: '#000',
-    padding: 0,
-    margin: 0,
+   //height: 100, // or any fixed height you need
+  //textAlign: 'center',         // horizontal centering
+  textAlignVertical: 'center', // vertical centering (Android only)
+  //padding: 10,
+  //borderWidth: 1,
+  //borderColor: '#ccc',
+  //borderRadius: 8,
+  fontSize: 16,
+
   },
   errorText: {
     color: '#FF4D4F',

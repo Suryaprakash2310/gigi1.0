@@ -1,12 +1,18 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Modal, View, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef, useMemo } from 'react';
+import { Modal, View, StyleSheet, TouchableWithoutFeedback, Animated, Easing, Dimensions } from 'react-native';
 import { theme } from '../theme/theme';
 import { ServiceSheet } from '../components/BottomSheets/ServiceSheet';
+import { RegistrationCatagorySheet } from '../components/BottomSheets/RegistrationCatogorySheet';
+import { AddEmployeeSheet } from '../screens/RegistrationPage/AddEmployeeSheet';
+
+const { height } = Dimensions.get('window');
 
 // Enum for all types of bottom sheets in app
 export enum BottomSheetType {
   NONE = 'NONE',
   SERVICE_SHEET = 'SERVICE_SHEET',
+  REGISTRATION_CATAGORY_SHEET = 'REGISTRATION_CATAGORY_SHEET',
+  ADDEMPLOYEE = "AddEmployeeSheet",
   // Add more variants as needed:
   // PROFILE_SHEET = 'PROFILE_SHEET',
   // FILTER_SHEET = 'FILTER_SHEET',
@@ -19,7 +25,7 @@ interface BottomSheetContextProps {
   closeSheet: () => void;
 }
 
-const BottomSheetContext = createContext<BottomSheetContextProps | undefined>(undefined);
+const BottomSheetContext = createContext<BottomSheetContextProps >(undefined);
 
 export const useBottomSheet = () => {
   const context = useContext(BottomSheetContext);
@@ -30,6 +36,7 @@ export const useBottomSheet = () => {
 export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
   const [sheetType, setSheetType] = useState<BottomSheetType>(BottomSheetType.NONE);
   const [sheetData, setSheetData] = useState<any>(null);
+  const slideAnim = useRef(new Animated.Value(height)).current; // start off-screen
 
   const openSheet = (type: BottomSheetType, data?: any) => {
     setSheetType(type);
@@ -37,21 +44,42 @@ export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const closeSheet = () => {
-    setSheetType(BottomSheetType.NONE);
-    setSheetData(null);
+    Animated.timing(slideAnim, {
+      toValue: height,
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setSheetType(BottomSheetType.NONE);
+      setSheetData(null);
+    });
   };
 
-  const renderSheet = () => {
-    switch (sheetType) {
-      case BottomSheetType.SERVICE_SHEET:
-        return <ServiceSheet />;
-      // Add new sheets easily here:
-      // case BottomSheetType.PROFILE_SHEET:
-      //   return <ProfileSheet />;
-      default:
-        return null;
+  useEffect(() => {
+    if (sheetType !== BottomSheetType.NONE) {
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.exp),
+        useNativeDriver: true,
+      }).start();
     }
-  };
+  }, [sheetType]);
+
+
+  const renderSheet = useMemo(() => {
+  switch (sheetType) {
+    case BottomSheetType.SERVICE_SHEET:
+      return <ServiceSheet />;
+    case BottomSheetType.REGISTRATION_CATAGORY_SHEET:
+      return <RegistrationCatagorySheet {...sheetData} />;
+    case BottomSheetType.ADDEMPLOYEE:
+      return <AddEmployeeSheet />;
+    default:
+      return null;
+  }
+}, [sheetType, sheetData]);
+
 
   return (
     <BottomSheetContext.Provider value={{ sheetType, sheetData, openSheet, closeSheet }}>
@@ -61,14 +89,29 @@ export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
       <Modal
         visible={sheetType !== BottomSheetType.NONE}
         transparent
-        animationType="slide"
+        animationType="none"
         onRequestClose={closeSheet}
       >
+        {/* Dimmed overlay */}
         <TouchableWithoutFeedback onPress={closeSheet}>
-          <View style={styles.overlay} />
+          <Animated.View style={[styles.overlay, { opacity: slideAnim.interpolate({
+            inputRange: [0, height],
+            outputRange: [1, 0],
+          }) }]} />
         </TouchableWithoutFeedback>
 
-        <View style={styles.sheetContainer}>{renderSheet()}</View>
+        {/* Animated sheet */}
+        <Animated.View
+          style={[
+            styles.sheetContainer,
+            {
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <View style={styles.dragIndicator} />
+          {renderSheet}
+        </Animated.View>
       </Modal>
     </BottomSheetContext.Provider>
   );
@@ -76,14 +119,31 @@ export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(91, 88, 88, 0.4)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   sheetContainer: {
-    //backgroundColor: 'rgba(217, 214, 214, 0.4)',
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    backgroundColor: theme.colors.background || '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 16,
-    maxHeight: '85%',
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 15,
+  },
+  dragIndicator: {
+    width: 50,
+    height: 5,
+    borderRadius: 10,
+    backgroundColor: '#ccc',
+    alignSelf: 'center',
+    marginBottom: 8,
   },
 });

@@ -21,6 +21,12 @@ export const theme = {
       fontSize: scaleFont(26),
       fontWeight: '600' as '600',
     },
+    subheading: {
+      fontFamily: 'Poppins',
+      fontSize: scaleFont(20),
+      fontWeight: '500' as '500',
+    },
+
     body: {
       fontFamily: 'Poppins',
       fontSize: scaleFont(16),

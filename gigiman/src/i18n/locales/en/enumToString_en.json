@@ -6,6 +6,12 @@
     "edit": "Edit",
     "confirm": "Confirm",
     "back": "Back",
-    "next": "Next"
+    "next": "Next",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "error": "An error occurred. Please try again.",
+    "success": "Operation completed successfully.",
+    "verify": "Verify",
+    "sendOtp": "Send OTP"
   }
 }
