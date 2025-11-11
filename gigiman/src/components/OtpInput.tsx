@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '80%',
-    marginVertical: 20,
+    marginVertical: 16,
   },
   input: {
     width: 55,

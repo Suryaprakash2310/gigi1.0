@@ -9,6 +9,8 @@ export const theme = {
     border: '#E5E5E5',
     success: '#34C759',
     error: '#FF3B30',
+    line: '#ddd',
+    mediumLine: '#ccc'
   },
   typography: {
     h1: {

@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import FloatingLabelInput from '../../components/TextInput';
 import AppHeader from '../../components/AppHeader';
 import CustomButton from '../../components/Bottom';
@@ -309,9 +309,9 @@ export const SingleEmpDetail = () => {
             {role === UserRole.MULTI_EMPLOYEE && (
               <>
                 <Text style={styles.title}>Add your Office Employees by employeeId...</Text>
-                <view style={styles.addEmp}>
-                <CustomButton  title={'Add Employees'} onPress={openAddEmployees}></CustomButton>
-                </view>
+                <View style={styles.addEmp}>
+                  <CustomButton title={'Add Employees'} onPress={openAddEmployees}></CustomButton>
+                </View>
                 {errors.employees ? (
                   <Text style={{ color: 'red', marginBottom: 6 }}>{errors.employees}</Text>
                 ) : null}
@@ -338,7 +338,7 @@ export const SingleEmpDetail = () => {
                     setFormData({ ...formData, gstNumber: text });
                     setErrors({ ...errors, gstNumber: validateGST(text) });
                   }}
-                  keyboardType="numeric"
+                  //keyboardType="numeric"
                   error={errors.gstNumber}
                 />
               </>
@@ -466,13 +466,13 @@ export const SingleEmpDetail = () => {
         showBack={currentStep > 0}
         onBackPress={() => setCurrentStep(currentStep - 1)}
       />
-
       <View style={styles.container}>{renderStepContent()}</View>
 
       <View style={styles.footer}>
         <CustomButton
           title={currentStep < 3 ? 'Next' : 'Register'}
           onPress={handleNext}
+          widthCount={0.9}
         />
       </View>
     </KeyboardAvoidingView>
@@ -500,9 +500,9 @@ const styles = StyleSheet.create({
     ...theme.typography.h1,
     marginBottom: 8,
   },
-  addEmp:{
-    width:'65%',
-    
+  addEmp: {
+    width: '65%',
+
   },
   chip: {
     flexDirection: 'row',

@@ -14,11 +14,11 @@ export default function AuthLandingScreen() {
   const { openSheet } = useBottomSheet();
    const handleCategorySelect = (category: string) => {
     navigation.navigate('EmployeeDetail', { role: category });
-    // if (category === 'TOOL_SHOP') {
-    //   navigation.navigate('ToolShopDetail');
-    // } else {
-    //   navigation.navigate('EmployeeDetail', { role: category });
-    // }
+    if (category === 'TOOL_SHOP') {
+      navigation.navigate('ToolShopDetail');
+    } else {
+      navigation.navigate('EmployeeDetail', { role: category });
+    }
   };
 
 
@@ -41,9 +41,10 @@ export default function AuthLandingScreen() {
         <CustomButton
           title="Login"
           onPress={() =>{navigation.navigate('phone')}}
+          widthCount={0.8}
         />
         </View>
-        <Pressable onPress={() =>{openSheet(BottomSheetType.REGISTRATION_CATAGORY_SHEET,{  onSelect: handleCategorySelect, })}} style={{marginTop:16}}>
+        <Pressable onPress={() =>{openSheet(BottomSheetType.REGISTRATION_CATAGORY_SHEET,{  onSelect: handleCategorySelect, })}} >
           <Text>Create account</Text>
         </Pressable>
 
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonContainer: {
-    width: '100%',
+    //width: '100%',
   },
   bottomcontainer:{
     flex:1, 

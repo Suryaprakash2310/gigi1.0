@@ -61,7 +61,7 @@ export default function AppHeader({
         {showBack ? (
           <TouchableOpacity onPress={onBackPress} style={styles.iconButton}>
             <Ionicons
-              name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'}
+              name={ 'chevron-back' }
               size={24}
               color={theme.colors.text}
             />

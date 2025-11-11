@@ -41,6 +41,7 @@ interface BottomButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  widthCount? : number;
 }
 
 export default function BottomButton({
@@ -48,12 +49,13 @@ export default function BottomButton({
   onPress,
   loading = false,
   disabled = false,
+  widthCount = width * 0.9,
 }: BottomButtonProps) {
   const insets = useSafeAreaInsets();
 
   // 🔹 Responsive sizes
   const buttonWidth = width * 0.9; // 90% width with safe horizontal spacing
-  const sideMargin = width * 0.05;
+  const sideMargin = width * 0.01;
   const paddingVertical = Math.max(height * 0.018, 12);
   const fontSize = Math.max(width * 0.045, 14);
   const dotSize = Math.max(width * 0.018, 6);
@@ -93,7 +95,7 @@ export default function BottomButton({
     <View
       style={[
         styles.container,
-        {
+        { width: width * widthCount,
           paddingBottom: insets.bottom > 0 ? insets.bottom + 12 : 22,
           paddingHorizontal: sideMargin, // ✅ ensures no screen edge touch
         },
@@ -106,7 +108,7 @@ export default function BottomButton({
         style={{ width: "100%", maxWidth: 500 }}
       >
         <LinearGradient
-          colors={disabled ? ["#999", "#777"] : ["#E60073", "#A600FF"]}
+          colors={disabled ? ["#999", "#777"] : ["#8e2e0cff", "#8e2e0cff"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
   container: {
     //position: "absolute",
     //bottom: 0,
-    width: "100%",
+    //width: "100%",
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
