@@ -1,74 +1,115 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { ServiceCard } from '../../components/BottomSheets/ServiceCard';
-import { SERVICES } from '../../utils/config/services.config';
 import SearchBar from '../../components/SearchBar';
+import { Service, ServiceAPI } from '../../api/service';
+
 
 interface Props {
-  onSelectService: (selectedServices: any[]) => void;
+  onSelectService: (selectedServices: Service[]) => void;
 }
 
 const ServiceSelector: React.FC<Props> = ({ onSelectService }) => {
-  const [filteredServices, setFilteredServices] = useState(SERVICES);
-  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleServicePress = (service: any) => {
-    const isSelected = selectedServices.some((s) => s.id === service.id);
+  // useEffect(() => {
+  //   const fetchServices = async () => {
+  //     try {
+  //       const data = await ServiceAPI.getAll();
+  //       if (data.success && data.services) {
+  //         setServices(data.services);
+  //         setFilteredServices(data.services);
+  //         console.log(data.services);
+  //       }
+  //     } catch (err) {
+  //       Alert.alert("Error", "Failed to fetch services");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   fetchServices();
+  // }, []);
+
+  useEffect(() => {
+  const fetchServices = async () => {
+    try {
+      console.log("Fetching services from API...");
+      const data = await ServiceAPI.getAll();
+      console.log("API Response:", data);
+
+      if (data.services && Array.isArray(data.services)) {
+        setServices(data.services);
+        setFilteredServices(data.services);
+      } else {
+        console.warn("⚠️ No services found or unexpected data:", data);
+      }
+    } catch (err) {
+      console.error("❌ Fetch error:", err);
+      Alert.alert("Error", "Failed to fetch services");
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchServices();
+}, []);
+
+
+  useEffect(() => {
+    onSelectService(selectedServices);
+  }, [selectedServices]);
+
+  const handleServicePress = (service: Service) => {
+    const isSelected = selectedServices.some((s) => s._id === service._id);
 
     if (isSelected) {
-      setSelectedServices((prev) => prev.filter((s) => s.id !== service.id));
+      setSelectedServices((prev) => prev.filter((s) => s._id !== service._id));
     } else {
-      if (selectedServices.length >= 5) {
-        Alert.alert('Limit Reached', 'You can select up to 5 services only.');
+      if (selectedServices.length >= 3) {
+        Alert.alert('Limit Reached', 'You can select up to 3 services only.');
         return;
       }
       setSelectedServices((prev) => [...prev, service]);
     }
   };
 
-  useEffect(() => {
-    onSelectService(selectedServices);
-  }, [selectedServices]);
-
   return (
     <View style={{ flex: 1 }}>
-      
-
-      <SearchBar
-        placeholder="Search services..."
-        data={SERVICES}
-        searchKey="title"
-        onResults={setFilteredServices}
-      />
-
-      <FlatList
-        data={filteredServices}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        renderItem={({ item }) => (
-          <ServiceCard
-            title={item.title}
-            icon={item.icon}
-            onPress={() => handleServicePress(item)}
-            isSelected={selectedServices.some((s) => s.id === item.id)}
+      {loading ? (
+        <ActivityIndicator size="large" style={{ marginTop: 40 }} />
+      ) : (
+        <>
+          <SearchBar
+            placeholder="Search services..."
+            data={services}
+            searchKey="domainName"
+            onResults={setFilteredServices}
           />
-        )}
-      />
+          <FlatList
+            data={filteredServices}
+            keyExtractor={(item) => item._id}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
+            renderItem={({ item }) => (
+              <ServiceCard
+                title={item.domainName}
+                icon={item.serviceImage}
+                onPress={() => handleServicePress(item)}
+                isSelected={selectedServices.some((s) => s._id === item._id)}
+              />
+            )}
+          />
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: 18,
-    fontWeight: '600',
-    //marginVertical: 10,
-    textAlign: 'center',
-  },
   row: {
     justifyContent: 'space-evenly',
-    //marginHorizontal: 10,
   },
 });
 

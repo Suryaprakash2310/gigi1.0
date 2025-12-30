@@ -8,6 +8,7 @@ import type { AuthStackParamList } from '../../navigation/AuthStack';
 import { useNavigation } from '@react-navigation/native';
 import AppHeader from '../../components/AppHeader';
 import FloatingLabelInput from '../../components/TextInput';
+import { AuthAPI } from '../../api/auth';
 
 const { width, height } = Dimensions.get('window');
 type PhoneNavProp = NativeStackNavigationProp<AuthStackParamList, 'phone'>;
@@ -16,15 +17,27 @@ export default function PhoneNumberScreen() {
   const navigation = useNavigation<PhoneNavProp>();
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleGetOtp = () => {
+  const handleGetOtp = async() => {
     if (phone.length !== 10) {
       setError('Enter a valid 10-digit phone number');
       return;
     }
     setError('');
     // TODO: connect backend for OTP generation
-    navigation.navigate('otp', { phone }); // move to next screen
+    try {
+      setLoading(true);
+      await AuthAPI.sendOtp(phone.trim());
+      alert('OTP sent successfully');
+       navigation.navigate('otp', { phone });
+       //navigation.navigate('otp', { phone });
+    } catch (e) {
+      alert('Failed to send OTP');
+    }finally {
+      setLoading(false);
+    }
+    //navigation.navigate('otp', { phone }); // move to next screen
   };
 
   return (
@@ -71,9 +84,10 @@ export default function PhoneNumberScreen() {
 
             <View style={styles.buttonWrapper}>
               <CustomButton
-                title="Get OTP"
+                title={loading ? 'Sending...' : 'Get OTP'}
                 onPress={handleGetOtp}
                 disabled={!phone}
+                widthCount={0.9}
               />
             </View>
           
@@ -144,6 +158,7 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     //flex:1,
     justifyContent: 'flex-end', 
+    alignItems: 'center',
     // position: 'absolute',
     // bottom: height * 0.08,
     // left: 24,

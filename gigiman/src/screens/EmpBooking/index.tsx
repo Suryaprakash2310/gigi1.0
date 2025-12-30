@@ -200,7 +200,7 @@ export const EmpBookingScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fafafa' },
+  container: { flex: 1, padding: 16, backgroundColor: '#f8f4f4ff' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   subTitle: { ...theme.typography.subheading, fontWeight: 'bold' },
   otpContainer: {

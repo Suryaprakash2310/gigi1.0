@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Login → Save both token + role
   const login = async (role: string, token?: string) => {
     try {
-      const userToken = token || 'mock-token-123'; // fallback for testing
+      const userToken = token; // || 'mock-token-123'; // fallback for testing
       await AsyncStorage.setItem('userToken', userToken);
       await AsyncStorage.setItem('userRole', role);
       setUserToken(userToken);

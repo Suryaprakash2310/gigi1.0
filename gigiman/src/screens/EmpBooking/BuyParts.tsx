@@ -1,353 +1,465 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme/theme';
-import SearchBar from '../../components/SearchBar';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BookingStackParamList } from '../../navigation/EmpBookingStack';
-import BottomButton from '../../components/Bottom';
-import AppHeader from '../../components/AppHeader';
-type BookingNavProp = NativeStackNavigationProp<BookingStackParamList, 'Booking'>;
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { theme } from "../../theme/theme";
+import SearchBar from "../../components/SearchBar";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BookingStackParamList } from "../../navigation/EmpBookingStack";
+import BottomButton from "../../components/Bottom";
+import AppHeader from "../../components/AppHeader";
+import { fetchCategories, fetchParts } from "@/api/parts.api";
 
-const { height } = Dimensions.get('window');
+type BookingNavProp = NativeStackNavigationProp<
+  BookingStackParamList,
+  "Booking"
+>;
 
+const { height } = Dimensions.get("window");
+
+// -------------------------
+// PART ITEM TYPE
+// -------------------------
 interface PartItem {
-  id: string;
-  name: string;
+  _id?: string;
+  partsname: string;
   price: number;
   quantity: number;
 }
 
 const PartsScreen = () => {
   const navigation = useNavigation<BookingNavProp>();
-  const [parts, setParts] = useState<PartItem[]>([
-    { id: '1', name: 'Eco Breeze Ceiling Fan Eco Breeze Ceiling Fan Eco Breeze Ceiling Fan', price: 420, quantity: 0 },
-    { id: '2', name: 'TurboCool Copper Fan', price: 680, quantity: 0 },
-    { id: '3', name: 'SmartAir Remote Fan', price: 560, quantity: 0 },
-    { id: '4', name: 'WhirlWind Silent Fan', price: 490, quantity: 0 },
-    { id: '5', name: 'AeroSpin LED Fan', price: 610, quantity: 0 },
-    { id: '6', name: 'BreezeMaster XL Fan', price: 530, quantity: 0 },
-    { id: '7', name: 'UltraFlow Designer Fan', price: 700, quantity: 0 },
-    { id: '8', name: 'ZenAir Minimalist Fan', price: 475, quantity: 0 },
-    { id: '9', name: 'CoolCraft Dual Blade Fan', price: 590, quantity: 0 },
-    { id: '10', name: 'Nimbus Smart Ceiling Fan', price: 640, quantity: 0 },
-    { id: '11', name: 'Vortex Copper Motor Fan', price: 505, quantity: 0 },
-    { id: '12', name: 'SkyGlow Remote Fan', price: 615, quantity: 0 },
-  ])
 
-  const [filteredParts, setFilteredParts] = useState<PartItem[]>(parts);
+  // -------------------------
+  // STATE
+  // -------------------------
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [parts, setParts] = useState<PartItem[]>([]);
+  const [filteredParts, setFilteredParts] = useState<PartItem[]>([]);
+  const [loadingParts, setLoadingParts] = useState(false);
 
-  const selectedParts = useMemo(() => parts.filter(p => p.quantity > 0), [parts]);
+  const mockJobId = "j1"; // TODO: replace when integrating real job flow
 
-  // 🧾 Calculate total
-  const total = selectedParts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  // Load categories on mount
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
-  // ✅ Quantity Increment
-  const increaseQty = (id: string) => {
-    setParts(prev =>
-      prev.map(item => (item.id === id ? { ...item, quantity: item.quantity + 1 } : item))
-    );
+  // Sync filteredParts whenever parts change
+  useEffect(() => {
+    setFilteredParts(parts);
+  }, [parts]);
+
+  // -------------------------
+  // API: Load Categories
+  // -------------------------
+  const loadCategories = async () => {
+    const res = await fetchCategories();
+    setCategories(res.categories || []);
   };
 
-  const decreaseQty = (id: string) => {
-    setParts(prev =>
-      prev.map(item =>
-        item.id === id && item.quantity > 0 ? { ...item, quantity: item.quantity - 1 } : item
+  // -------------------------
+  // API: Load Parts
+  // -------------------------
+  const onCategorySelect = async (cat: any) => {
+    setSelectedCategory(cat._id);
+    setLoadingParts(true);
+
+    const res = await fetchParts(mockJobId, cat._id);
+
+    const formatted: PartItem[] = res.parts.map((p: any, index: number) => ({
+      _id: p._id ?? String(index),
+      partsname: p.partsname,
+      price: Number(p.price) || 0,
+      quantity: 0,
+    }));
+
+    setParts(formatted);
+    setFilteredParts(formatted);
+
+    setLoadingParts(false);
+  };
+
+  // -------------------------
+  // SELECTED PARTS + TOTAL
+  // -------------------------
+  const selectedParts = useMemo(
+    () => parts.filter((p) => p.quantity > 0),
+    [parts]
+  );
+
+  const total = selectedParts.reduce(
+    (sum, p) =>
+      sum + (Number(p.price) || 0) * (Number(p.quantity) || 0),
+    0
+  );
+
+  // -------------------------
+  // QUANTITY HANDLERS
+  // -------------------------
+  const increaseQty = (id?: string) => {
+    setParts((prev) =>
+      prev.map((item) =>
+        item._id === id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
       )
     );
   };
 
-  // const handleSend = () => {
-  //   const selected = parts.filter(p => p.quantity > 0);
-  //   if (selected.length === 0) {
-  //     alert('Please select at least one part.');
-  //     return;
-  //   }
-
-  //   // Simulate API response
-  //   const mockRequestId = 'REQ12345';
-
-  //   navigation.navigate('Booking', {
-  //     partsbuyed: true,
-  //     requestId: mockRequestId,
-  //   });
-  // };
-  const handleSend = () => {
-    const selected = parts.filter(p => p.quantity > 0);
-    if (selected.length === 0) {
-      alert('Please select at least one part.');
-      return;
-    }
-    setShowConfirmModal(true); // show modal instead of navigating directly
+  const decreaseQty = (id?: string) => {
+    setParts((prev) =>
+      prev.map((item) =>
+        item._id === id && item.quantity > 0
+          ? { ...item, quantity: item.quantity - 1 }
+          : item
+      )
+    );
   };
 
+  // -------------------------
+  // SEND TO TOOLSHOP
+  // -------------------------
+  const handleSend = () => {
+    if (selectedParts.length === 0) {
+      alert("Please select at least one part.");
+      return;
+    }
+    setShowConfirmModal(true);
+  };
 
-
-
+  // -------------------------
+  // RENDER PART ITEM
+  // -------------------------
   const renderItem = ({ item }: { item: PartItem }) => (
     <View style={styles.card}>
-      <Text style={styles.partName}>{item.name}</Text>
+      <Text style={styles.partName}>{item.partsname}</Text>
+
       <View style={styles.quantityRow}>
-        <TouchableOpacity style={styles.circleBtn} onPress={() => decreaseQty(item.id)}>
+        <TouchableOpacity
+          style={styles.circleBtn}
+          onPress={() => decreaseQty(item._id)}
+        >
           <Ionicons name="remove" size={18} color="#000" />
         </TouchableOpacity>
+
         <Text style={styles.qtyText}>{item.quantity}</Text>
-        <TouchableOpacity style={styles.circleBtn} onPress={() => increaseQty(item.id)}>
+
+        <TouchableOpacity
+          style={styles.circleBtn}
+          onPress={() => increaseQty(item._id)}
+        >
           <Ionicons name="add" size={18} color="#000" />
         </TouchableOpacity>
+
         <Text style={styles.price}>₹{item.price}</Text>
       </View>
     </View>
   );
 
+  // -------------------------
+  // UI
+  // -------------------------
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <AppHeader title="Buy Parts" showBack={true} onBackPress={() => navigation.goBack()} />
-      <View style={styles.container}>
-        {/* Header */}
+  <SafeAreaView style={styles.safeArea}>
+    <AppHeader
+      title="Buy Parts"
+      showBack={true}
+      onBackPress={() => navigation.goBack()}
+    />
 
+    <View style={styles.container}>
 
-        {/* Search */}
-        <SearchBar
-          placeholder="Search parts..."
-          data={parts}
-          searchKey="name"
-          onResults={setFilteredParts}
-        />
-
-        {/* List */}
-        <FlatList
-          data={filteredParts}
-          renderItem={renderItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-        <BottomButton title='Send to Toolshop' onPress={handleSend} widthCount={0.9} />
-      </View>
-      {/* ✅ Confirmation Modal */}
-{showConfirmModal && (
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContainer}>
-      <Text style={styles.modalTitle}>Confirm Your Parts</Text>
-
+      {/* Category Pills */}
       <FlatList
-        data={parts.filter(p => p.quantity > 0)}
-        keyExtractor={(item) => item.id}
+        data={categories}
+        horizontal
+        keyExtractor={(item) => item._id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingVertical: 10 }}
         renderItem={({ item }) => (
-          <View style={styles.modalRow}>
-            <Text style={styles.modalItem}>{item.name}</Text>
-            <Text style={styles.modalQty}>x{item.quantity}</Text>
-            <Text style={styles.modalPrice}>₹{item.price * item.quantity}</Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.categoryPill,
+              selectedCategory === item._id && styles.categoryPillActive,
+            ]}
+            onPress={() => onCategorySelect(item)}
+          >
+            <Text
+              style={[
+                styles.categoryPillText,
+                selectedCategory === item._id && styles.categoryPillTextActive,
+              ]}
+            >
+              {item.domaintoolname}
+            </Text>
+          </TouchableOpacity>
         )}
-        contentContainerStyle={{ paddingBottom: 10 }}
       />
 
-      <View style={styles.modalFooter}>
-        <Text style={styles.modalTotal}>
-          Total: ₹
-          {parts
-            .filter(p => p.quantity > 0)
-            .reduce((sum, p) => sum + p.price * p.quantity, 0)}
-        </Text>
+      {/* Search */}
+      <SearchBar
+        placeholder="Search parts..."
+        data={parts}
+        searchKey="partsname"
+        onResults={setFilteredParts}
+      />
 
-        <View style={styles.modalButtons}>
-          <TouchableOpacity
-            style={[styles.modalButton, { backgroundColor: '#ccc' }]}
-            onPress={() => setShowConfirmModal(false)}>
-            <Text style={styles.modalButtonText}>Cancel</Text>
-          </TouchableOpacity>
+      {loadingParts && (
+        <ActivityIndicator
+          size="small"
+          color={theme.colors.primary}
+          style={{ marginTop: 10 }}
+        />
+      )}
 
-          <TouchableOpacity
-            style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
-            onPress={() => {
-              setShowConfirmModal(false);
-              const mockRequestId = 'REQ12345';
-              navigation.navigate('Booking', {
-                partsbuyed: true,
-                requestId: mockRequestId,
-              });
-            }}>
-            <Text style={styles.modalButtonText}>Confirm</Text>
-          </TouchableOpacity>
-        </View>
+      {/* Parts List */}
+      <FlatList
+        data={filteredParts}
+        keyExtractor={(item) => item._id!}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      />
+
+      {/* Floating Button */}
+      <View style={styles.floatingButtonWrapper}>
+        <BottomButton
+          title="Send to Toolshop"
+          onPress={handleSend}
+          widthCount={0.9}
+        />
       </View>
     </View>
-  </View>
-)}
 
+    {/* Premium Modal */}
+    {showConfirmModal && (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Confirm Your Order</Text>
 
+          <FlatList
+            data={selectedParts}
+            keyExtractor={(item) => item._id!}
+            renderItem={({ item }) => (
+              <View style={styles.modalRow}>
+                <Text style={styles.modalItem}>{item.partsname}</Text>
+                <Text style={styles.modalQty}>x{item.quantity}</Text>
+                <Text style={styles.modalPrice}>
+                  ₹{item.price * item.quantity}
+                </Text>
+              </View>
+            )}
+          />
 
+          <View style={styles.modalFooter}>
+            <Text style={styles.modalTotal}>Total: ₹{total}</Text>
 
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#ccc" }]}
+                onPress={() => setShowConfirmModal(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
 
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: theme.colors.primary },
+                ]}
+                onPress={() => {
+                  setShowConfirmModal(false);
+                  navigation.navigate("Booking", {
+                    partsbuyed: true,
+                    requestId: "REQ12345",
+                  });
+                }}
+              >
+                <Text style={styles.modalButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    )}
+  </SafeAreaView>
+);
 
-    </SafeAreaView>
-  );
 };
 
 export default PartsScreen;
 
+// -------------------------
+// STYLES
+// -------------------------
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, padding: 16, backgroundColor: '#fafafa' },
-  listContent: { paddingBottom: 140 },
-  card: {
-    borderBottomWidth: 1,
-    borderColor: theme.colors.mediumLine,
-    paddingVertical: 14,
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
   },
-  partName: { ...theme.typography.subheading, paddingBottom: 6 },
-  quantityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  circleBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+
+  /* CATEGORY */
+  categoryPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: theme.colors.mediumLine,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "#E5E5E5",
   },
-  qtyText: { fontSize: 16, fontWeight: '500' },
-  price: { fontSize: 14, fontWeight: '600', color: '#000' },
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
+  categoryPillActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  categoryPillText: {
+    fontSize: 14,
+    color: "#444",
+    fontWeight: "500",
+  },
+  categoryPillTextActive: {
+    color: "#FFF",
+  },
+
+  /* PART CARD */
+  card: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    marginVertical: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  partName: {
+    ...theme.typography.subheading,
+    color: "#000",
+    marginBottom: 10,
+  },
+  quantityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  circleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F7F7F7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  qtyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    width: 35,
+    textAlign: "center",
+  },
+
+  price: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: theme.colors.primary,
+  },
+
+  /* FLOATING BUTTON */
+  floatingButtonWrapper: {
+    position: "absolute",
+    bottom: 20,
     left: 0,
     right: 0,
-    height: height * 0.55, // slightly bigger
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    elevation: 10,
-    padding: 16,
+    alignItems: "center",
   },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+
+  /* MODAL */
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
+  modalContainer: {
+    width: "90%",
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 20,
+    maxHeight: height * 0.6,
   },
-  sheetList: {
-    //paddingBottom: 80, // avoid overlap with footer
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 15,
   },
-  sheetItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  modalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginVertical: 6,
   },
-  sheetName: {
+  modalItem: {
     flex: 1,
-    fontSize: 14,
-  },
-  sheetQty: {
-    width: 40,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  sheetPrice: {
-    width: 70,
-    textAlign: 'right',
-    fontWeight: '500',
-  },
-
-  totalText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  sendButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 25,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-  },
-  sendText: {
-    color: '#fff',
-    fontWeight: '600',
     fontSize: 15,
+    color: "#333",
   },
-  modalOverlay: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 100,
-},
-modalContainer: {
-  width: '90%',
-  backgroundColor: '#fff',
-  borderRadius: 16,
-  padding: 16,
-  maxHeight: height * 0.6,
-},
-modalTitle: {
-  fontSize: 18,
-  fontWeight: '700',
-  textAlign: 'center',
-  //marginBottom: 10,
-  paddingBottom:10,
-  color: '#000',
-},
-modalRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginVertical: 6,
-},
-modalItem: {
-  flex: 1,
-  fontSize: 14,
-  color: '#333',
-},
-modalQty: {
-  width: 40,
-  textAlign: 'center',
-  fontWeight: '600',
-},
-modalPrice: {
-  width: 60,
-  textAlign: 'right',
-  fontWeight: '600',
-},
-modalFooter: {
-  marginTop: 10,
-  borderTopWidth: 1,
-  borderTopColor: '#eee',
-  paddingTop: 10,
-},
-modalTotal: {
-  fontSize: 16,
-  fontWeight: 'bold',
-  color: '#000',
-  textAlign: 'right',
-  marginBottom: 14,
-},
-modalButtons: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-},
-modalButton: {
-  flex: 1,
-  paddingVertical: 12,
-  marginHorizontal: 5,
-  borderRadius: 10,
-  alignItems: 'center',
-},
-modalButtonText: {
-  color: '#fff',
-  fontWeight: '700',
-  fontSize: 15,
-},
-
-
+  modalQty: {
+    width: 40,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  modalPrice: {
+    width: 60,
+    textAlign: "right",
+    fontWeight: "700",
+  },
+  modalFooter: {
+    marginTop: 20,
+  },
+  modalTotal: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "right",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginHorizontal: 5,
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
 });
+

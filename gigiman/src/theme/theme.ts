@@ -2,8 +2,8 @@ import { scaleFont } from './scaleFont';
 
 export const theme = {
   colors: {
-    primary: '#007AFF',
-    secondary: '#FF9500',
+    primary: '#8e2e0cff',   //'#007AFF',#a85334
+    secondary: '#FF9500',   // theme.color.primary;
     background: '#FFFFFF',
     text: '#333333',
     border: '#E5E5E5',

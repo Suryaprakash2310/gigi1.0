@@ -1,5 +1,13 @@
-import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import React, { memo } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  useWindowDimensions,
+  Platform,
+} from "react-native";
 import { theme } from "../../theme/theme";
 
 interface ServiceCardProps {
@@ -9,60 +17,95 @@ interface ServiceCardProps {
   isSelected?: boolean;
 }
 
-export const ServiceCard = ({ title, icon, onPress, isSelected = false }: ServiceCardProps) => {
-  return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        isSelected && styles.selectedCard,
-      ]}
-      activeOpacity={0.8}
-      onPress={onPress}
-    >
-      <Image source={icon} style={styles.icon} resizeMode="cover" />
-      <Text style={[styles.title, isSelected && styles.selectedText]}>{title}</Text>
-    </TouchableOpacity>
-  );
-};
+export const ServiceCard = memo(
+  ({ title, icon, onPress, isSelected = false }: ServiceCardProps) => {
+    const { width } = useWindowDimensions();
 
-// slightly smaller and with spacing
-const cardWidth = Dimensions.get("window").width / 3;
+    // Responsive card width (3 columns with safe spacing)
+    const cardWidth = Math.min(width / 3.2, 140);
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onPress}
+        style={[
+          styles.card,
+          { width: cardWidth },
+          isSelected && styles.selectedCard,
+        ]}
+      >
+        <View style={[styles.iconWrapper, isSelected && styles.selectedIconWrap]}>
+          <Image source={icon} style={styles.icon} resizeMode="contain" />
+        </View>
+
+        <Text
+          numberOfLines={2}
+          style={[styles.title, isSelected && styles.selectedText]}
+        >
+          {title}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   card: {
-    width: cardWidth,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    marginHorizontal: 6,
+    marginBottom: 18,
+
+    // iOS shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+
+    // Android shadow
+    elevation: 4,
+
+    borderWidth: 1,
+    borderColor: "#E6E6E6",
+  },
+
+  selectedCard: {
+    borderColor: theme.colors.primary,
+    backgroundColor: "#F4F6FF",
+  },
+
+  iconWrapper: {
+    width: 110,
+    height: 110,
     borderRadius: 14,
-    padding: 8,
+    backgroundColor: "#F7F7F7",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
-    marginHorizontal: 6, // adds nice spacing between cards
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#4d4b4bff",
+    marginBottom: 8,
   },
-  selectedCard: {
-    borderColor: theme.colors.text,
-    borderWidth: 2,
-    backgroundColor: "#ececf3ff",
+
+  selectedIconWrap: {
+    backgroundColor: "#E9ECFF",
   },
+
   icon: {
     width: 90,
-    height: 80,
-    borderRadius: 12,
+    height: 90,
   },
+
   title: {
-    marginTop: 6,
-    ...theme.typography.body,
+    fontSize: 13,
+    fontWeight: "600",
     color: theme.colors.text,
     textAlign: "center",
+    lineHeight: 18,
   },
+
   selectedText: {
-    color: theme.colors.text,
+    color: theme.colors.primary,
+    fontWeight: "700",
   },
 });

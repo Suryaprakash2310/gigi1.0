@@ -7,6 +7,7 @@ import EmployeeStack from './EmployeeStack';
 import ToolShopStack from './ToolShopStack';
 import { UserRole } from '../utils/enums/CommonEnum';
 import { View, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // import SplashScreen from '../screens/SplashScreen';
 
@@ -24,6 +25,7 @@ export default function RootNavigator() {
 
 
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       {!userToken ? (
         <AuthStack />
@@ -35,5 +37,6 @@ export default function RootNavigator() {
         <AuthStack />
       )}
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

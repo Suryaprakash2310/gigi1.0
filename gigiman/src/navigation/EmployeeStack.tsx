@@ -9,6 +9,10 @@ import { EmpDashboard } from '../screens/EmpDashboard';
 import { theme } from '../theme/theme'; // optional if you have a theme file
 import EmpBookingStack from './EmpBookingStack';
 import EmpProfileScreen from '../screens/EmpProfileScreen';
+import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
+import { TeamEmployeeScreen } from '@/screens/team/TeamDashboardScreen';
+import PocketStack from './PocketStack';
+import EmpProfileStack from './EmpProfileStack';
 
 export type AppStackParamList = {
   Home: undefined;
@@ -21,8 +25,8 @@ export type AppStackParamList = {
       employeeCount?: string;
       workingHours?: string;
     }; } | undefined;
-  Profile: undefined;
-  // ToolShop: undefined;
+  Pocket: undefined;
+   Profile: undefined;
 };
 
 const Tab = createBottomTabNavigator<AppStackParamList>();
@@ -37,7 +41,7 @@ export default function AppStack() {
         tabBarInactiveTintColor: '#999',
         tabBarStyle: {
           backgroundColor: '#fff',
-          borderTopWidth: 0,
+          borderTopWidth: 0.8,
           elevation: 5,
           height: 60,
           paddingBottom: 5,
@@ -52,15 +56,15 @@ export default function AppStack() {
             iconName = focused ? 'calendar' : 'calendar-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           } 
-          // else if (route.name === 'ToolShop') {
-          //   return (
-          //     <MaterialIcons
-          //       name={focused ? 'home-repair-service' : 'build'}
-          //       size={size}
-          //       color={color}
-          //     />
-          //   );
-          //} 
+          else if (route.name === 'Pocket') {
+            return (
+              <MaterialIcons
+                name={focused ? 'account-balance-wallet' : 'account-balance-wallet'}
+                size={size}
+                color={color}
+              />
+            );
+          } 
           else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -69,9 +73,10 @@ export default function AppStack() {
       })}
     >
       <Tab.Screen name="Home" component={EmpDashboard} />
+      {/* <Tab.Screen name="Home" component={EmpDashboard} /> */}
       <Tab.Screen name="Booking" component={EmpBookingStack} />
-      {/* <Tab.Screen name="ToolShop" component={ProfileScreen} /> */}
-      <Tab.Screen name="Profile" component={EmpProfileScreen} />
+      <Tab.Screen name="Pocket" component={PocketStack} />
+      <Tab.Screen name="Profile" component={EmpProfileStack} />
     </Tab.Navigator>
   );
 }

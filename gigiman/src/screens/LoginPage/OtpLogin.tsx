@@ -1,124 +1,100 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Dimensions,
-  Alert,
-  ActivityIndicator,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform,
+  TouchableWithoutFeedback, Dimensions, Alert, ActivityIndicator
 } from 'react-native';
 import CustomButton from '../../components/Bottom';
 import { theme } from '../../theme/theme';
-import { useNavigation } from '@react-navigation/native';
-import { useRoute } from '@react-navigation/native';
-import type { RouteProp } from '@react-navigation/native';
-import type { AuthStackParamList } from '../../navigation/AuthStack';
-
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AppHeader from '../../components/AppHeader';
 import OtpInput, { OtpInputRef } from '../../components/OtpInput';
 import { Ionicons } from '@expo/vector-icons';
-import { t } from 'i18next';
+import { AuthAPI } from '../../api/auth';
+import { AuthContext } from '../../context/AuthContext';
+import { UserRole } from '@/utils/enums/CommonEnum';
 
-const { width, height } = Dimensions.get('window');
-type OtpRouteProp = RouteProp<AuthStackParamList, 'otp'>;
-
+const { width } = Dimensions.get('window');
 
 export default function OtpLoginScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<OtpRouteProp>();
-const { phone } = route.params;
-  //const [phone, setPhone] = useState('9876543210'); // Example: will come from previous page param
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { phone } = route.params;
   const [otp, setOtp] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const otpRef = useRef<OtpInputRef>(null);
+  const { login } = useContext(AuthContext); // ✅ Use context login
 
-  //  Edit Icon → Go Back to Phone Entry Page
-  const handleEditPhone = () => {
-    navigation.goBack();
-  };
+  const handleOtpComplete = (enteredOtp: string) => setOtp(enteredOtp);
 
-  //  OTP Complete callback
-  const handleOtpComplete = (enteredOtp: string) => {
-    setOtp(enteredOtp);
-    setError('');
-  };
-
-  //  Verify OTP Logic
   const handleVerifyOtp = async () => {
     if (otp.length !== 4) {
-      setError('Please enter the complete 4-digit OTP');
+      Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');
       return;
     }
 
-    setLoading(true);
-    setError('');
+    try {
+      setLoading(true);
+      console.log(otp,"otp")
+      console.log(phone,"phone")
+      const res = await AuthAPI.verifyOtp(phone.trim(), otp.trim());
 
-    // Mocking backend call
-    setTimeout(() => {
-      setLoading(false);
-      if (otp === '1234') {
-        Alert.alert('Login Successful ✅', 'You are now logged in!');
-        // navigation.replace('Home'); // Example: navigate to Home screen
+      if (res?.token) {
+        // ✅ Trigger global login
+        //await login(res.role, res.token);
+        await login(res.role)
+        console.log('Login Successful ✅', `Welcome ${res.role}`)
+
+        Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
+        await login(res.role, res.token)
+        // Navigation automatically handled by RootNavigator
       } else {
-        setError('Invalid OTP. Please try again.');
+        Alert.alert('Failed', 'Invalid OTP or unauthorized user.');
+        console.log('Failed', 'Invalid OTP or unauthorized user.')
         otpRef.current?.reset();
       }
-    }, 1500);
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'OTP verification failed');
+      console.log('Error', error.response?.data?.message || 'OTP verification failed')
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Resend OTP Logic
-  const handleResend = () => {
-    Alert.alert('OTP Sent Again ✅', `New OTP sent to ${phone}`);
-    otpRef.current?.reset();
-    setOtp('');
-    setError('');
+  const handleResend = async () => {
+    try {
+      await AuthAPI.sendOtp(phone);
+      Alert.alert('Success', 'OTP resent successfully');
+      otpRef.current?.reset();
+    } catch {
+      Alert.alert('Error', 'Failed to resend OTP');
+    }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <TouchableWithoutFeedback onPress={() => {}}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <TouchableWithoutFeedback>
         <View style={{ flex: 1, justifyContent: 'space-between' }}>
           <AppHeader showBack={true} onBackPress={() => navigation.goBack()} />
-
           <View style={styles.container}>
-            <Text style={styles.title}>Enter the OTP number</Text>
-            <Text style={styles.subtitle}>
-              A 4-digit OTP was sent to your number {phone}
-            </Text>
+            <Text style={styles.title}>Enter the OTP</Text>
+            <Text style={styles.subtitle}>OTP sent to +91 {phone}</Text>
 
-            {/* Edit phone icon */}
-            <TouchableWithoutFeedback onPress={handleEditPhone}>
-              <View style={styles.editContainer}>
-                <Ionicons name="create-outline" size={22} color="#f26363" />
-                <Text style={styles.editText}>Edit Number</Text>
-              </View>
-            </TouchableWithoutFeedback>
+            <View style={styles.editContainer}>
+              <Ionicons name="create-outline" size={20} color="#f26363" />
+              <Text style={styles.editText} onPress={() => navigation.goBack()}>Edit Number</Text>
+            </View>
 
-            <OtpInput
-              ref={otpRef}
-              onOtpComplete={handleOtpComplete}
-              onResend={handleResend}
-            />
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            <OtpInput ref={otpRef} otpLength={4} onOtpComplete={handleOtpComplete} onResend={handleResend} />
           </View>
 
           <View style={styles.buttonWrapper}>
             <CustomButton
-              title={loading ? 'Verifying...' : t('common.verify') || 'Verify'}
+              title={loading ? 'Verifying...' : 'Verify'}
               onPress={handleVerifyOtp}
-              disabled={!otp || otp.length < 4 || loading}
+              disabled={loading || otp.length < 4}
+              widthCount={0.85}
             />
-            {loading && (
-              <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginTop: 10 }} />
-            )}
+            {loading && <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 10 }} />}
           </View>
         </View>
       </TouchableWithoutFeedback>
@@ -127,41 +103,10 @@ const { phone } = route.params;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 3,
-    justifyContent: 'flex-start',
-    paddingHorizontal: width * 0.06,
-    gap: 16,
-  },
-  title: {
-    color: theme.colors.text,
-    ...theme.typography.h1,
-  },
-  subtitle: {
-    color: theme.colors.text,
-    ...theme.typography.body,
-    flexWrap: 'wrap',
-  },
-  editContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    //marginTop: 4,
-  },
-  editText: {
-    marginLeft: 5,
-    color: '#f26363',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    //marginTop: 8,
-    fontFamily: 'Poppins-Regular',
-  },
-  buttonWrapper: {
-    justifyContent: 'flex-end',
-    marginBottom: 40,
-    paddingHorizontal: width * 0.06,
-  },
+  container: { flex: 3, justifyContent: 'flex-start', paddingHorizontal: width * 0.06, gap: 16 },
+  title: { ...theme.typography.h1, color: theme.colors.text },
+  subtitle: { ...theme.typography.body, color: theme.colors.text },
+  editContainer: { flexDirection: 'row', alignItems: 'center' },
+  editText: { marginLeft: 5, color: '#f26363', fontSize: 14, fontWeight: '500' },
+  buttonWrapper: { justifyContent: 'flex-end', alignItems: 'center', marginBottom: 40 },
 });

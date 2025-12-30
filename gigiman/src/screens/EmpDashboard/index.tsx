@@ -209,6 +209,7 @@ export const EmpDashboard = () => {
   
 
       <FlatList
+      style={{ flex: 1 }}
         data={clientRequests}
         keyExtractor={item => item.id.toString()}
         renderItem={({ item, index }) => (
@@ -232,7 +233,7 @@ export const EmpDashboard = () => {
 
 // 🎨 Styles
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9F9F9' },
+  container: { flex: 1, backgroundColor: '#f8f4f4ff' },
   headerContainer: {
     paddingHorizontal: width * 0.05,
     paddingTop: 10,

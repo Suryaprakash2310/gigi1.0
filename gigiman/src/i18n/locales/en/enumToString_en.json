@@ -12,6 +12,10 @@
     "error": "An error occurred. Please try again.",
     "success": "Operation completed successfully.",
     "verify": "Verify",
-    "sendOtp": "Send OTP"
+    "sendOtp": "Send OTP",
+    "welcome": "Welcome to Gigiman"
+  },
+  "login":{
+    
   }
 }

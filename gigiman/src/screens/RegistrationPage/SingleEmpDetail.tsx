@@ -1,5 +1,5 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
+import React, { useContext, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView, ActivityIndicator } from 'react-native';
 import FloatingLabelInput from '../../components/TextInput';
 import AppHeader from '../../components/AppHeader';
 import CustomButton from '../../components/Bottom';
@@ -13,6 +13,11 @@ import { ToolShopDomainConfig } from '../../utils/config/ToolShop.config';
 import SearchBar from '../../components/SearchBar';
 import { ServiceCard } from '../../components/BottomSheets/ServiceCard';
 import { AuthContext } from '../../context/AuthContext';
+import { RegisterAPI } from '@/api/register';
+import { ServiceAPI } from '@/api/service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchCategories } from '@/api/parts.api';
+import { t } from 'i18next';
 
 interface Employee {
   id: string;
@@ -27,8 +32,10 @@ export const SingleEmpDetail = () => {
   const { role } = route.params || {};
   const [currentStep, setCurrentStep] = useState(0);
   const { openSheet } = useBottomSheet();
-  const [filteredToolShop, setFilteredToolShop] = useState(ToolShopDomainConfig);
-  const [selectedToolShop, setSelectedToolShop] = useState<any[]>([]);
+  const [toolShops, setToolShops] = useState<any[]>([]);
+  const [filteredToolShop, setFilteredToolShop] = useState<any[]>([]);
+  const [selectedToolShop, setSelectedToolShop] = useState<any[]>([])
+  const [loading, setLoading] = useState(false);
   const { login, userRole } = useContext(AuthContext);
 
   let initialFormData;
@@ -37,7 +44,8 @@ export const SingleEmpDetail = () => {
       ownerName: '',
       phone: '',
       address: '',
-      employees: [], // list of employees
+      services: [],
+      //employees: [], // list of employees
     };
   } else if (role === UserRole.TOOL_SHOP) {
     initialFormData = {
@@ -72,6 +80,82 @@ export const SingleEmpDetail = () => {
     services: '',
     employees: '',
   });
+  const submitRegistration = async () => {
+    try {
+      let response;
+      if (role === UserRole.SINGLE_EMPLOYEE) {
+        response = await RegisterAPI.singleEmployee({
+          fullname: formData.name,
+          phoneNo: formData.phone,
+          aadhaarNo: formData.aadharNo,
+          address: {
+            city: formData.address, // simplify until you add structured inputs
+            state: "Tamil Nadu",
+            pincode: "600001",
+          },
+          services: formData.services.map((s: any) => s._id),
+          role: UserRole.SINGLE_EMPLOYEE,
+        });
+      } else if (role === UserRole.MULTI_EMPLOYEE) {
+        response = await RegisterAPI.multipleEmployee({
+          storeName: 'no shop',
+          ownerName: formData.ownerName,
+          gstNo: "",
+          storeLocation: "empty location",
+          phoneNo: formData.phone,
+          role: UserRole.MULTI_EMPLOYEE,      // MUST match backend enum exactly
+          members: [],                 // array
+          pendingRequests: [],
+          services: formData.services.map((s: any) => s._id),
+        });
+      } else {
+        response = await RegisterAPI.toolShop({
+          shopName: formData.shopName,
+          ownerName: formData.ownerName,
+          gstNo: formData.gstNumber,
+          storeLocation: formData.address,
+          phoneNo: formData.phone,
+          role: UserRole.TOOL_SHOP,
+        });
+      }
+      if (response.data?.token) {
+        Alert.alert("Registration Successful");
+        console.log('Registration Response:', response.data);
+        await login(role, response.data.token);
+      }
+    } catch (err) {
+      Alert.alert("Error", err.response?.data?.message || "Registration failed");
+    }
+  };
+
+  //const token = response.data.token;
+
+  // 2️⃣ Add all selected services in one API call
+  //     const selectedIds = formData.services.map((s: any) => s._id);
+
+  // try {
+  //   const serviceResponse = await ServiceAPI.addMultipleServices(token, selectedIds);
+  //   console.log("Service Response:", serviceResponse);
+  //   await new Promise(resolve => setTimeout(resolve, 2000));
+  //   login(role, token);
+  // } catch (serviceErr) {
+  //   console.error("❌ Service Add Error:", serviceErr);
+  //   Alert.alert("Error", "Service assignment failed. Please try again.");
+  // }
+
+
+  // 3️⃣ Save token + role and login
+  // await AsyncStorage.setItem("userToken", token);
+  // await AsyncStorage.setItem("userRole", role);
+
+
+  //   Alert.alert("Success", "Employee registered with services!");
+  // } catch (err) {
+  //   console.error("❌ Registration or Service Add Error:", err);
+  //   Alert.alert("Error", "Registration failed. Please try again.");
+  // }
+  // };
+
 
   // open sheet with initialSelected + callback
   const openAddEmployees = () => {
@@ -122,8 +206,40 @@ export const SingleEmpDetail = () => {
     }
 
   };
+  useEffect(() => {
+    if (currentStep === 3 && role === UserRole.TOOL_SHOP) {
+      setLoading(true);
+      loadCategories();
+    }
+  }, [currentStep, role]);
+  const loadCategories = async () => {
+  try {
+    const response = await fetchCategories(); // response is the full object
+    const categories = response.categories;   // extract the actual array
 
+    if (!Array.isArray(categories)) {
+      console.error("❌ Expected array but got:", categories);
+      return;
+    }
 
+    const formatted = categories.map((cat: any) => ({
+      id: cat._id,
+      title: cat.domaintoolname,
+      icon: null,
+    }));
+
+    setToolShops(formatted);
+    setFilteredToolShop(formatted);
+  } catch (err) {
+    console.log("❌ Failed to load categories", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  if (loading) {
+    return <ActivityIndicator size="large" />;
+  }
 
 
 
@@ -310,7 +426,7 @@ export const SingleEmpDetail = () => {
               <>
                 <Text style={styles.title}>Add your Office Employees by employeeId...</Text>
                 <View style={styles.addEmp}>
-                  <CustomButton title={'Add Employees'} onPress={openAddEmployees}></CustomButton>
+                  <CustomButton title={'Add Employees'} onPress={openAddEmployees} widthCount={0.5}></CustomButton>
                 </View>
                 {errors.employees ? (
                   <Text style={{ color: 'red', marginBottom: 6 }}>{errors.employees}</Text>
@@ -379,7 +495,7 @@ export const SingleEmpDetail = () => {
 
                 <SearchBar
                   placeholder="Search tool shop domains..."
-                  data={ToolShopDomainConfig}
+                  data={filteredToolShop}
                   searchKey="title"
                   onResults={setFilteredToolShop} />
                 <FlatList
@@ -452,7 +568,7 @@ export const SingleEmpDetail = () => {
     } else {
       console.log('Final Form Data:', formData);
       login(role as UserRole);
-      // submitRegistration(); //  backend call
+      submitRegistration(); //  backend call
     }
   };
 
@@ -469,8 +585,8 @@ export const SingleEmpDetail = () => {
       <View style={styles.container}>{renderStepContent()}</View>
 
       <View style={styles.footer}>
-        <CustomButton
-          title={currentStep < 3 ? 'Next' : 'Register'}
+        <CustomButton 
+          title={currentStep < 3 ? t('common.save') : 'Register'}
           onPress={handleNext}
           widthCount={0.9}
         />
@@ -492,8 +608,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   footer: {
-    padding: 24,
+    //padding: 24,
     backgroundColor: '#fff',
+    alignItems: 'center',
   },
   title: {
     color: theme.colors.text,
