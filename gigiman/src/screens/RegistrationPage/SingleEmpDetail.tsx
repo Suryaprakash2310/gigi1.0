@@ -45,7 +45,7 @@ export const SingleEmpDetail = () => {
       phone: '',
       address: '',
       services: [],
-      //employees: [], // list of employees
+      employees: [], // list of employees
     };
   } else if (role === UserRole.TOOL_SHOP) {
     initialFormData = {
@@ -100,12 +100,12 @@ export const SingleEmpDetail = () => {
         response = await RegisterAPI.multipleEmployee({
           storeName: 'no shop',
           ownerName: formData.ownerName,
-          gstNo: "",
+          gstNo: "9898989898767675",
           storeLocation: "empty location",
           phoneNo: formData.phone,
           role: UserRole.MULTI_EMPLOYEE,      // MUST match backend enum exactly
-          members: [],                 // array
-          pendingRequests: [],
+          members: ["E0019"],                 // array
+          pendingRequests: ["E0019"],
           services: formData.services.map((s: any) => s._id),
         });
       } else {
