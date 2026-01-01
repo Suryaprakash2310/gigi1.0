@@ -45,7 +45,8 @@ export const SingleEmpDetail = () => {
       phone: '',
       address: '',
       services: [],
-      employees: [], // list of employees
+      aadharNo: '',
+      //employees: [], // list of employees
     };
   } else if (role === UserRole.TOOL_SHOP) {
     initialFormData = {
@@ -78,7 +79,7 @@ export const SingleEmpDetail = () => {
     gstNumber: '',
     toolShops: '',
     services: '',
-    employees: '',
+    //employees: '',
   });
   const submitRegistration = async () => {
     try {
@@ -100,12 +101,13 @@ export const SingleEmpDetail = () => {
         response = await RegisterAPI.multipleEmployee({
           storeName: 'no shop',
           ownerName: formData.ownerName,
-          gstNo: "9898989898767675",
-          storeLocation: "empty location",
+          //gstNo: "9898989898767675",
+          storeLocation: formData.address,
           phoneNo: formData.phone,
-          role: UserRole.MULTI_EMPLOYEE,      // MUST match backend enum exactly
-          members: ["E0019"],                 // array
-          pendingRequests: ["E0019"],
+          role: UserRole.MULTI_EMPLOYEE,
+          ownerAadhaar: formData.aadharNo,      // MUST match backend enum exactly
+         // members: ["E0019"],                 // array
+          //pendingRequests: ["E0019"],
           services: formData.services.map((s: any) => s._id),
         });
       } else {
@@ -158,18 +160,18 @@ export const SingleEmpDetail = () => {
 
 
   // open sheet with initialSelected + callback
-  const openAddEmployees = () => {
-    openSheet(BottomSheetType.ADDEMPLOYEE, {
-      initialSelected: formData.employees,
-      onSelect: (selectedEmployees: Employee[]) => {
-        setFormData((prev) => ({ ...prev, employees: selectedEmployees }));
-        setErrors((prev) => ({
-          ...prev,
-          employees: validateEmployees(formData.employees),
-        }));
-      },
-    });
-  };
+  // const openAddEmployees = () => {
+  //   openSheet(BottomSheetType.ADDEMPLOYEE, {
+  //     initialSelected: formData.employees,
+  //     onSelect: (selectedEmployees: Employee[]) => {
+  //       setFormData((prev) => ({ ...prev, employees: selectedEmployees }));
+  //       setErrors((prev) => ({
+  //         ...prev,
+  //         employees: validateEmployees(formData.employees),
+  //       }));
+  //     },
+  //   });
+  // };
 
   const removeEmployee = (id: string) => {
     setFormData(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
@@ -424,24 +426,17 @@ export const SingleEmpDetail = () => {
             )}
             {role === UserRole.MULTI_EMPLOYEE && (
               <>
-                <Text style={styles.title}>Add your Office Employees by employeeId...</Text>
-                <View style={styles.addEmp}>
-                  <CustomButton title={'Add Employees'} onPress={openAddEmployees} widthCount={0.5}></CustomButton>
-                </View>
-                {errors.employees ? (
-                  <Text style={{ color: 'red', marginBottom: 6 }}>{errors.employees}</Text>
-                ) : null}
-
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {formData.employees.map((emp) => (
-                    <View key={emp.id} style={styles.chip}>
-                      <Text style={styles.chipText}>{emp.empId} • {emp.name}</Text>
-                      <TouchableOpacity onPress={() => removeEmployee(emp.id)}>
-                        <Text style={styles.chipRemove}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.title}>Enter your owner's Aadhar Number...</Text>
+                <FloatingLabelInput
+                  label="Aadhar Number"
+                  value={formData.aadharNo}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, aadharNo: text });
+                    setErrors({ ...errors, aadharNo: validateAadhar(text) });
+                  }}
+                  keyboardType="numeric"
+                  error={errors.aadharNo}
+                />
               </>
             )}
             {role === UserRole.TOOL_SHOP && (
@@ -546,7 +541,7 @@ export const SingleEmpDetail = () => {
         newErrors.aadharNo = validateAadhar(formData.aadharNo);
       }
       else if (role === UserRole.MULTI_EMPLOYEE) {
-        newErrors.employees = validateEmployees(formData.employees);
+        newErrors.aadharNo = validateAadhar(formData.aadharNo);
       }
     }
     else if (currentStep === 3) {
