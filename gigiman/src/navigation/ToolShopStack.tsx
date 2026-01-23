@@ -13,7 +13,7 @@ import ToolShopProfileScreen from "../screens/ShopProfileScreen";
 
 export type ToolShopStackParamList = {
   Dashboard: undefined;
-  Booking: { initialTab?: string };
+  Booking: { initialTab?: string; requestId?: string };
   profile: undefined;
 };
 

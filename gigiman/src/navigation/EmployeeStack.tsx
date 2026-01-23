@@ -7,7 +7,7 @@ import {EmpBookingScreen} from '../screens/EmpBooking/index';
 import ProfileScreen from '../screens/ProfileScreen';
 import { EmpDashboard } from '../screens/EmpDashboard';
 import { theme } from '../theme/theme'; // optional if you have a theme file
-import EmpBookingStack from './EmpBookingStack';
+import EmpBookingStack, { BookingStackParamList } from './EmpBookingStack';
 import EmpProfileScreen from '../screens/EmpProfileScreen';
 import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
 import { TeamEmployeeScreen } from '@/screens/team/TeamDashboardScreen';
@@ -16,15 +16,10 @@ import EmpProfileStack from './EmpProfileStack';
 
 export type AppStackParamList = {
   Home: undefined;
-  Booking: { fromDashboard?: boolean; jobId?: number, jobDetails?:{
-      id: number;
-      name: string;
-      work: string;
-      cost: string;
-      address: string;
-      employeeCount?: string;
-      workingHours?: string;
-    }; } | undefined;
+  BookingStack: {
+    screen: keyof BookingStackParamList;
+    params?: BookingStackParamList[keyof BookingStackParamList];
+  };
   Pocket: undefined;
    Profile: undefined;
 };
@@ -52,7 +47,7 @@ export default function AppStack() {
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
-          } else if (route.name === 'Booking') {
+          } else if (route.name === 'BookingStack') {
             iconName = focused ? 'calendar' : 'calendar-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           } 
@@ -74,7 +69,7 @@ export default function AppStack() {
     >
       <Tab.Screen name="Home" component={EmpDashboard} />
       {/* <Tab.Screen name="Home" component={EmpDashboard} /> */}
-      <Tab.Screen name="Booking" component={EmpBookingStack} />
+      <Tab.Screen name="BookingStack" component={EmpBookingStack} />
       <Tab.Screen name="Pocket" component={PocketStack} />
       <Tab.Screen name="Profile" component={EmpProfileStack} />
     </Tab.Navigator>

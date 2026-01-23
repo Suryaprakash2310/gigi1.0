@@ -13,6 +13,7 @@ export enum BottomSheetType {
   SERVICE_SHEET = 'SERVICE_SHEET',
   REGISTRATION_CATAGORY_SHEET = 'REGISTRATION_CATAGORY_SHEET',
   ADDEMPLOYEE = "AddEmployeeSheet",
+  TEAM_ASSIGN_EMPLOYEES = 'TEAM_ASSIGN_EMPLOYEES',
   // Add more variants as needed:
   // PROFILE_SHEET = 'PROFILE_SHEET',
   // FILTER_SHEET = 'FILTER_SHEET',
@@ -25,7 +26,7 @@ interface BottomSheetContextProps {
   closeSheet: () => void;
 }
 
-const BottomSheetContext = createContext<BottomSheetContextProps >(undefined);
+const BottomSheetContext = createContext<BottomSheetContextProps>(undefined);
 
 export const useBottomSheet = () => {
   const context = useContext(BottomSheetContext);
@@ -68,17 +69,20 @@ export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
 
 
   const renderSheet = useMemo(() => {
-  switch (sheetType) {
-    case BottomSheetType.SERVICE_SHEET:
-      return <ServiceSheet />;
-    case BottomSheetType.REGISTRATION_CATAGORY_SHEET:
-      return <RegistrationCatagorySheet {...sheetData} />;
-    case BottomSheetType.ADDEMPLOYEE:
-      return <AddEmployeeSheet />;
-    default:
-      return null;
-  }
-}, [sheetType, sheetData]);
+    switch (sheetType) {
+      case BottomSheetType.SERVICE_SHEET:
+        return <ServiceSheet />;
+      case BottomSheetType.REGISTRATION_CATAGORY_SHEET:
+        return <RegistrationCatagorySheet {...sheetData} />;
+      case BottomSheetType.ADDEMPLOYEE:
+        return <AddEmployeeSheet />;
+      // case BottomSheetType.TEAM_ASSIGN_EMPLOYEES:
+      //   return <TeamAssignEmployeeSheet data={sheetData} />;
+
+      default:
+        return null;
+    }
+  }, [sheetType, sheetData]);
 
 
   return (
@@ -94,10 +98,12 @@ export const BottomSheetProvider = ({ children }: { children: ReactNode }) => {
       >
         {/* Dimmed overlay */}
         <TouchableWithoutFeedback onPress={closeSheet}>
-          <Animated.View style={[styles.overlay, { opacity: slideAnim.interpolate({
-            inputRange: [0, height],
-            outputRange: [1, 0],
-          }) }]} />
+          <Animated.View style={[styles.overlay, {
+            opacity: slideAnim.interpolate({
+              inputRange: [0, height],
+              outputRange: [1, 0],
+            })
+          }]} />
         </TouchableWithoutFeedback>
 
         {/* Animated sheet */}

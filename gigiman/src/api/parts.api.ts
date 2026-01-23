@@ -23,12 +23,29 @@ interface PartsApiResponse {
   parts: Part[];
 }
 
+export interface PartRequest {
+  _id: string;
+  bookingId: any;
+  employeeId: any;
+  parts: {
+    partName: string;
+    quantity: number;
+    price: number;
+  }[];
+  totalCost: number;
+  status: string;
+}
+
+
 export const fetchCategories = async (): Promise<CategoriesResponse> => {
   const res = await apiClient.get<CategoriesResponse>("/parts/categories", {
     //params: { jobId },
   });
   return res.data;
 };
+
+
+
 
 export const fetchParts = async (jobId: string, categoryId: string): Promise<PartsApiResponse> => {
   const res = await apiClient.get<PartsApiResponse>("/parts/showparts", {
@@ -37,6 +54,36 @@ export const fetchParts = async (jobId: string, categoryId: string): Promise<Par
   return res.data;
 };
 
+
+
+export const fetchPartRequestById = async (
+  requestId: string
+): Promise<PartRequest> => {
+  const res = await apiClient.get<{ partRequest: PartRequest }>(
+    `booking/parts/part-request/${requestId}`
+  );
+
+  return res.data.partRequest;
+};
+
+
+// export const requestTool = (data) =>
+//   apiClient.post("/parts/request-tool", data);
+
+
+export const createPartRequest = async (
+  bookingId: string,
+  parts: any[],
+  totalCost: number
+) => {
+  const res = await apiClient.post("/booking/tool/request", {
+    bookingId,
+    parts,
+    totalCost,
+  });
+  console.log("++++++++++++Part request response:", res.data);
+  return res.data;
+};
 
 
 // export const fetchParts = async ( categoryId: string) => {

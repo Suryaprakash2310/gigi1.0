@@ -1,4 +1,4 @@
-import React, { useRef, useState, useContext } from 'react';
+import React, { useRef, useState, useContext, useEffect } from 'react';
 import {
   View, Text, StyleSheet, KeyboardAvoidingView, Platform,
   TouchableWithoutFeedback, Dimensions, Alert, ActivityIndicator
@@ -18,47 +18,97 @@ const { width } = Dimensions.get('window');
 export default function OtpLoginScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { phone } = route.params;
+  const { phone, otp: prefilledOtp } = route.params || {};
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const otpRef = useRef<OtpInputRef>(null);
   const { login } = useContext(AuthContext); // ✅ Use context login
 
+  // Autofill OTP if passed from previous screen
+  useEffect(() => {
+    if (prefilledOtp && otpRef.current) {
+      otpRef.current.setValue(String(prefilledOtp));
+    }
+  }, [prefilledOtp]);
+
   const handleOtpComplete = (enteredOtp: string) => setOtp(enteredOtp);
 
+  // const handleVerifyOtp = async () => {
+  //   if (otp.length !== 4) {
+  //     Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');
+  //     return;
+  //   }
+
+  //   try {
+  //     setLoading(true);
+  //     console.log(otp,"otp")
+  //     console.log(phone,"phone")
+  //     const res = await AuthAPI.verifyOtp(phone.trim(), otp.trim());
+
+  //     if (res?.token) {
+  //       // ✅ Trigger global login
+  //       //await login(res.role, res.token);
+  //       await login(res.role)
+  //       console.log('Login Successful ✅', `Welcome ${res.role}`)
+
+  //       Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
+  //       await login(res.role, res.token)
+  //       // Navigation automatically handled by RootNavigator
+  //     } else {
+  //       Alert.alert('Failed', 'Invalid OTP or unauthorized user.');
+  //       console.log('Failed', 'Invalid OTP or unauthorized user.')
+  //       otpRef.current?.reset();
+  //     }
+  //   } catch (error: any) {
+  //     Alert.alert('Error', error.response?.data?.message || 'OTP verification failed');
+  //     console.log('Error', error.response?.data?.message || 'OTP verification failed')
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const handleVerifyOtp = async () => {
-    if (otp.length !== 4) {
-      Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');
-      return;
+  if (otp.length !== 4) {
+    Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const res = await AuthAPI.verifyOtp(phone.trim(), otp.trim());
+
+    /**
+     * EXPECTED BACKEND RESPONSE:
+     * {
+     *   token,
+     *   role,
+     *   employee?: { _id }
+     * }
+     */
+
+    if (!res?.token || !res?.role) {
+      throw new Error("Invalid login response");
     }
 
-    try {
-      setLoading(true);
-      console.log(otp,"otp")
-      console.log(phone,"phone")
-      const res = await AuthAPI.verifyOtp(phone.trim(), otp.trim());
+    // 🔴 IMPORTANT: extract employeeId safely
+    //const employeeId = res.id ? res.id : null;
 
-      if (res?.token) {
-        // ✅ Trigger global login
-        //await login(res.role, res.token);
-        await login(res.role)
-        console.log('Login Successful ✅', `Welcome ${res.role}`)
+    // 🔥 SINGLE login call — THIS IS THE FIX
+    await login(res.role, res.token, res.id);
 
-        Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
-        await login(res.role, res.token)
-        // Navigation automatically handled by RootNavigator
-      } else {
-        Alert.alert('Failed', 'Invalid OTP or unauthorized user.');
-        console.log('Failed', 'Invalid OTP or unauthorized user.')
-        otpRef.current?.reset();
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'OTP verification failed');
-      console.log('Error', error.response?.data?.message || 'OTP verification failed')
-    } finally {
-      setLoading(false);
-    }
-  };
+    Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
+    // Navigation handled by RootNavigator
+
+  } catch (error: any) {
+    Alert.alert(
+      'Error',
+      error.response?.data?.message || 'OTP verification failed'
+    );
+    otpRef.current?.reset();
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleResend = async () => {
     try {

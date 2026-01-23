@@ -1,117 +1,270 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
-  ActivityIndicator,
   FlatList,
+  Text,
+  Modal,
   Alert,
   StyleSheet,
-} from 'react-native';
-import AppHeader from '../../components/AppHeader';
-import { theme } from '../../theme/theme';
-import { RequestCard } from '../../components/toolshop/RequestCard';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WorkingModeToggle } from '../EmpDashboard/WorkingModeToggle';
-import { useNavigation } from '@react-navigation/native';
-
-const STORAGE_KEY = 'toolshop_requests_v1';
+  TouchableOpacity,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import AppHeader from "../../components/AppHeader";
+import { RequestCard } from "../../components/toolshop/RequestCard";
+import { socket } from "@/socket/socket";
+import { WorkingModeToggle } from "../EmpDashboard/WorkingModeToggle";
+import { fetchPartRequestById } from "@/api/parts.api";
+import OtpInput from "../../components/OtpInput";
 
 export const ToolShopDashboard = () => {
-  const navigation = useNavigation<any>();
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [workingMode, setWorkingMode] = useState(true);
+  const [workingMode, setWorkingMode] = useState(false);
+  const [shopId, setShopId] = useState<string | null>(null);
 
-  const MOCK = [
-    {
-      id: 'REQ001',
-      employeeName: 'Arun',
-      employeeId: 'EMP-1001',
-      items: [
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Wire', qty: 2 },
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Fan Motor', qty: 1 },
-        { name: 'Fan Motor', qty: 1 },
-      ],
-      total: 900,
-      otp: '1234',
-      status: 'pending',
-    },
-  ];
+  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+  const [acceptedRequests, setAcceptedRequests] = useState<any[]>([]);
 
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
+  const [activeRequest, setActiveRequest] = useState<any | null>(null);
+
+  /* ===============================
+     LOAD SHOP ID
+  =============================== */
   useEffect(() => {
-    const load = async () => {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      setRequests(raw ? JSON.parse(raw) : MOCK);
-      setLoading(false);
-    };
-    load();
+    AsyncStorage.getItem("providerId").then(setShopId);
   }, []);
 
-  const handleAccept = async (req) => {
-    if (!workingMode) {
-      return Alert.alert('Working mode is OFF');
+  /* ===============================
+     SOCKET: RECEIVE REQUEST
+  =============================== */
+  useEffect(() => {
+    const handler = async ({ requestId }: { requestId: string }) => {
+      const request = await fetchPartRequestById(requestId);
+
+      setIncomingRequests(prev => {
+        if (prev.some(r => r.requestId === request._id)) return prev;
+        return [{ ...request, requestId: request._id }, ...prev];
+      });
+    };
+
+    socket.on("toolshop-booking-request", handler);
+    return () => {
+      socket.off("toolshop-booking-request", handler);
+    };
+  }, []);
+
+  /* ===============================
+     WORKING MODE
+  =============================== */
+  const handleToggle = (value: boolean) => {
+    setWorkingMode(value);
+
+    if (value && !socket.connected) {
+      socket.connect();
+      socket.emit("register-toolshop", { shopId });
     }
 
-    const updated = requests.map(r =>
-      r.id === req.id ? { ...r, status: 'accepted' } : r
-    );
-
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setRequests(updated);
-
-    navigation.navigate('Booking', { initialTab: 'accepted' });
+    if (!value) {
+      socket.disconnect();
+      setIncomingRequests([]);
+      setAcceptedRequests([]);
+    }
   };
 
-  const handleReject = (req) => {
-    Alert.alert('Reject', 'Are you sure?', [
-      { text: 'Cancel' },
-      {
-        text: 'Reject',
-        onPress: () =>
-          setRequests(prev => prev.filter(r => r.id !== req.id)),
-      },
+  /* ===============================
+     ACCEPT REQUEST
+  =============================== */
+  const accept = (req: any) => {
+    socket.emit("toolshop-accept", {
+      requestId: req.requestId,
+      shopId,
+    });
+
+    setIncomingRequests(prev =>
+      prev.filter(r => r.requestId !== req.requestId)
+    );
+
+    setAcceptedRequests(prev => [
+      { ...req, status: "READY_FOR_PICKUP" },
+      ...prev,
     ]);
   };
 
-  const pendingList = requests.filter(r => r.status === 'pending');
+  /* ===============================
+     REJECT REQUEST
+  =============================== */
+  const reject = (req: any) => {
+    socket.emit("toolshop-reject", {
+      requestId: req.requestId,
+      shopId,
+    });
 
-  if (loading)
-    return <ActivityIndicator style={{ flex: 1 }} size="large" color={theme.colors.primary} />;
+    setIncomingRequests(prev =>
+      prev.filter(r => r.requestId !== req.requestId)
+    );
+  };
 
+  /* ===============================
+     OPEN OTP MODAL
+  =============================== */
+  const openOtp = (req: any) => {
+    setActiveRequest(req);
+    setOtpModalVisible(true);
+  };
+   
+  const verifyOtp = (otp: string) => {
+  if (!activeRequest) return;
+
+  console.log("📤 Verifying OTP:", otp);
+
+  socket.emit("verify-part-otp", {
+    requestId: activeRequest.requestId,
+    otp,
+  });
+};
+
+  
+
+  /* ===============================
+     OTP SOCKET RESULT
+  =============================== */
+  useEffect(() => {
+  const onSuccess = () => {
+    Alert.alert("Success", "Parts handed over successfully");
+
+    // Close modal
+    setOtpModalVisible(false);
+
+    // Remove from accepted list
+    setAcceptedRequests(prev =>
+      prev.filter(r => r.requestId !== activeRequest?.requestId)
+    );
+
+    setActiveRequest(null);
+  };
+
+  const onFailed = ({ message }: any) => {
+    Alert.alert("Invalid OTP", message || "Try again");
+  };
+
+  socket.on("part-otp-success", onSuccess);
+  socket.on("otp-failed", onFailed);
+
+  return () => {
+    socket.off("part-otp-success", onSuccess);
+    socket.off("otp-failed", onFailed);
+  };
+}, [activeRequest]);
+
+
+
+
+  /* ===============================
+     UI
+  =============================== */
   return (
     <View style={{ flex: 1 }}>
-      <AppHeader title="Dashboard" />
+      <AppHeader title="Tool Shop Dashboard" />
+
       <View style={{ padding: 16 }}>
-        <WorkingModeToggle initialValue={workingMode} onToggle={setWorkingMode} />
+        <WorkingModeToggle value={workingMode} onToggle={handleToggle} />
       </View>
 
-      {pendingList.length === 0 ? (
-        <Text style={styles.empty}>No pending requests</Text>
-      ) : (
-        <FlatList
-          data={pendingList}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <RequestCard
-              request={item}
-              mode="pending"
-              onAccept={() => handleAccept(item)}
-              onReject={() => handleReject(item)}
-            />
-          )}
-          contentContainerStyle={{ padding: 16 }}
-        />
-      )}
+      {/* INCOMING REQUESTS */}
+      <Text style={styles.sectionTitle}>Incoming Requests</Text>
+      <FlatList
+        data={incomingRequests}
+        keyExtractor={item => item.requestId.toString()}
+        renderItem={({ item }) => (
+          <RequestCard
+            request={item}
+            mode="incoming"
+            onAccept={() => accept(item)}
+            onReject={() => reject(item)}
+          />
+        )}
+        ListEmptyComponent={<Text style={styles.empty}>No incoming requests</Text>}
+        contentContainerStyle={{ padding: 16 }}
+      />
+
+      {/* ACCEPTED REQUESTS */}
+      <Text style={styles.sectionTitle}>Waiting Pickup</Text>
+      <FlatList
+        data={acceptedRequests}
+        keyExtractor={item => item.requestId.toString()}
+        renderItem={({ item }) => (
+          <RequestCard
+            request={item}
+            mode="pickup"
+            onVerify={() => openOtp(item)}
+          />
+        )}
+        ListEmptyComponent={<Text style={styles.empty}>No accepted requests</Text>}
+        contentContainerStyle={{ padding: 16 }}
+      />
+
+      {/* OTP MODAL */}
+      <Modal visible={otpModalVisible} transparent animationType="slide">
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalCard}>
+      <Text style={styles.modalTitle}>Verify Pickup OTP</Text>
+
+      <OtpInput
+        otpLength={4}
+        onOtpComplete={verifyOtp}
+      />
+
+      <TouchableOpacity
+        style={styles.cancelBtn}
+        onPress={() => {
+          setOtpModalVisible(false);
+          setActiveRequest(null);
+        }}
+      >
+        <Text>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
     </View>
   );
 };
 
+/* ===============================
+   STYLES
+=============================== */
 const styles = StyleSheet.create({
-  empty: { textAlign: 'center', marginTop: 30, color: '#999' },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginLeft: 16,
+    marginTop: 10,
+  },
+  empty: {
+    textAlign: "center",
+    marginTop: 20,
+    color: "#777",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCard: {
+    width: "90%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  cancelBtn: {
+    marginTop: 20,
+    alignItems: "center",
+  },
 });

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView, ActivityIndicator, Button } from 'react-native';
 import FloatingLabelInput from '../../components/TextInput';
 import AppHeader from '../../components/AppHeader';
 import CustomButton from '../../components/Bottom';
@@ -18,6 +18,7 @@ import { ServiceAPI } from '@/api/service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchCategories } from '@/api/parts.api';
 import { t } from 'i18next';
+import { getCurrentLocation } from '@/utils/location';
 
 interface Employee {
   id: string;
@@ -45,6 +46,8 @@ export const SingleEmpDetail = () => {
       phone: '',
       address: '',
       services: [],
+      longitude: null,
+      latitude: null,
       aadharNo: '',
       //employees: [], // list of employees
     };
@@ -52,8 +55,13 @@ export const SingleEmpDetail = () => {
     initialFormData = {
       ownerName: '',
       shopName: '',
-      phone: '',
-      address: '',
+      phoneNo: '',
+      //   location: {
+      //   type: 'Point',
+      //   coordinates: [], // [longitude, latitude]
+      // },
+      longitude: null,
+      latitude: null,
       gstNumber: '',
       toolShopDomain: [],
     };
@@ -64,11 +72,18 @@ export const SingleEmpDetail = () => {
       address: '',
       phone: '',
       aadharNo: '',
+      longitude: null,
+      latitude: null,
       services: [], // up to 5
     };
   }
 
   const [formData, setFormData] = useState(initialFormData);
+  const [coords, setCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [locLoading, setLocLoading] = useState(false);
 
   const [errors, setErrors] = useState({
     name: '',
@@ -81,6 +96,21 @@ export const SingleEmpDetail = () => {
     services: '',
     //employees: '',
   });
+
+  const detectLocation = async () => {
+    try {
+      setLocLoading(true);
+      const location = await getCurrentLocation();
+      setCoords(location);
+      Alert.alert("Location detected");
+      console.log("Detected Location:", location);
+    } catch (err: any) {
+      Alert.alert("Location Error", err.message);
+    } finally {
+      setLocLoading(false);
+    }
+  };
+
   const submitRegistration = async () => {
     try {
       let response;
@@ -89,11 +119,22 @@ export const SingleEmpDetail = () => {
           fullname: formData.name,
           phoneNo: formData.phone,
           aadhaarNo: formData.aadharNo,
-          address: {
-            city: formData.address, // simplify until you add structured inputs
-            state: "Tamil Nadu",
-            pincode: "600001",
-          },
+          // address: {
+          //   city: formData.address, // simplify until you add structured inputs
+          //   state: "Tamil Nadu",
+          //   pincode: "600001",
+          // },
+          // location: {
+          //   type: "Point",
+          //   coordinates: [
+          //     formData.coords?.longitude,
+          //     formData.coords?.latitude,
+          //   ],
+          // },
+          longitude: coords?.longitude,
+          latitude: coords?.latitude,
+
+
           services: formData.services.map((s: any) => s._id),
           role: UserRole.SINGLE_EMPLOYEE,
         });
@@ -102,11 +143,13 @@ export const SingleEmpDetail = () => {
           storeName: 'no shop',
           ownerName: formData.ownerName,
           //gstNo: "9898989898767675",
-          storeLocation: formData.address,
+          //storeLocation: formData.address,
           phoneNo: formData.phone,
           role: UserRole.MULTI_EMPLOYEE,
+          longitude: coords?.longitude,
+          latitude: coords?.latitude,
           ownerAadhaar: formData.aadharNo,      // MUST match backend enum exactly
-         // members: ["E0019"],                 // array
+          // members: ["E0019"],                 // array
           //pendingRequests: ["E0019"],
           services: formData.services.map((s: any) => s._id),
         });
@@ -115,15 +158,22 @@ export const SingleEmpDetail = () => {
           shopName: formData.shopName,
           ownerName: formData.ownerName,
           gstNo: formData.gstNumber,
-          storeLocation: formData.address,
           phoneNo: formData.phone,
+          // location: {
+          //   type: "Point",
+          //   coordinates: [coords?.longitude, coords?.latitude],
+          // },
+          longitude: coords?.longitude,
+          latitude: coords?.latitude,
+          categories: formData.toolShopDomain, // ids
           role: UserRole.TOOL_SHOP,
         });
       }
       if (response.data?.token) {
         Alert.alert("Registration Successful");
         console.log('Registration Response:', response.data);
-        await login(role, response.data.token);
+        const { token, role, id } = response.data;
+        await login(role, token, id);
       }
     } catch (err) {
       Alert.alert("Error", err.response?.data?.message || "Registration failed");
@@ -173,41 +223,44 @@ export const SingleEmpDetail = () => {
   //   });
   // };
 
+
+  // const loadCategories = async () => {
+  //     const res = await fetchCategories();
+  //     setCategories(res.categories || []);
+  //   };
+
   const removeEmployee = (id: string) => {
     setFormData(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
   };
 
   const handleToolShopPress = (toolshop: any) => {
-    const isSelected = selectedToolShop.some((s) => s.id === toolshop.id);
+    setSelectedToolShop((prevSelected) => {
+      const isSelected = prevSelected.some(s => s.id === toolshop.id);
 
-    if (isSelected) {
-      // 🔹 Remove the deselected toolshop
-      const updated = selectedToolShop.filter((s) => s.id !== toolshop.id);
-      setSelectedToolShop(updated);
-      setFormData((prev) => ({
-        ...prev,
-        toolShops: updated.map((s) => s.id),
-      }));
-    } else {
-      // 🔹 Add a new toolshop (with 5-limit protection)
-      if (selectedToolShop.length >= 5) {
-        Alert.alert('Limit Reached', 'You can select up to 5 tool shops only.');
-        return;
-      }
-      const updated = [...selectedToolShop, toolshop];
-      setSelectedToolShop(updated);
-      setFormData((prev) => ({
-        ...prev,
-        toolShops: updated.map((s) => s.id),
-      }));
-      // 🔹 live validation
-      setErrors((prev) => ({
-        ...prev,
-        toolShops: updated.length === 0 ? 'Please select at least one tool shop' : '',
-      }));
-    }
+      const updated = isSelected
+        ? prevSelected.filter(s => s.id !== toolshop.id)
+        : [...prevSelected, toolshop];
 
+      // 🔥 SINGLE SOURCE OF TRUTH
+      setFormData(prev => ({
+        ...prev,
+        toolShopDomain: updated.map(s => s.id),
+      }));
+
+      // 🔥 CLEAR ERROR LIVE
+      setErrors(prev => ({
+        ...prev,
+        toolShops: updated.length === 0
+          ? 'Please select at least one tool shop'
+          : '',
+      }));
+
+      return updated;
+    });
   };
+
+
+
   useEffect(() => {
     if (currentStep === 3 && role === UserRole.TOOL_SHOP) {
       setLoading(true);
@@ -215,29 +268,29 @@ export const SingleEmpDetail = () => {
     }
   }, [currentStep, role]);
   const loadCategories = async () => {
-  try {
-    const response = await fetchCategories(); // response is the full object
-    const categories = response.categories;   // extract the actual array
+    try {
+      const response = await fetchCategories(); // response is the full object
+      const categories = response.categories;   // extract the actual array
 
-    if (!Array.isArray(categories)) {
-      console.error("❌ Expected array but got:", categories);
-      return;
+      if (!Array.isArray(categories)) {
+        console.error("❌ Expected array but got:", categories);
+        return;
+      }
+
+      const formatted = categories.map((cat: any) => ({
+        id: cat._id,
+        title: cat.domainPartsName,
+        icon: null,
+      }));
+
+      setToolShops(formatted);
+      setFilteredToolShop(formatted);
+    } catch (err) {
+      console.log("❌ Failed to load categories", err);
+    } finally {
+      setLoading(false);
     }
-
-    const formatted = categories.map((cat: any) => ({
-      id: cat._id,
-      title: cat.domaintoolname,
-      icon: null,
-    }));
-
-    setToolShops(formatted);
-    setFilteredToolShop(formatted);
-  } catch (err) {
-    console.log("❌ Failed to load categories", err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (loading) {
     return <ActivityIndicator size="large" />;
@@ -403,6 +456,17 @@ export const SingleEmpDetail = () => {
               keyboardType="phone-pad"
               error={errors.phone}
             />
+            <Button
+              title={locLoading ? "Detecting location..." : "Use Current Location"}
+              onPress={detectLocation}
+              disabled={locLoading}
+            />
+
+            {coords && (
+              <Text style={{ marginTop: 8, color: "textMuted" }}>
+                Location captured ✔
+              </Text>
+            )}
           </>
         );
 
@@ -546,7 +610,7 @@ export const SingleEmpDetail = () => {
     }
     else if (currentStep === 3) {
       if (role === UserRole.TOOL_SHOP) {
-        newErrors.toolShops = validateToolShops(formData.toolShops);
+        newErrors.toolShops = validateToolShops(formData.toolShopDomain);
       }
       else {
         newErrors.services = validateServices(formData.services);
@@ -580,7 +644,7 @@ export const SingleEmpDetail = () => {
       <View style={styles.container}>{renderStepContent()}</View>
 
       <View style={styles.footer}>
-        <CustomButton 
+        <CustomButton
           title={currentStep < 3 ? t('common.save') : 'Register'}
           onPress={handleNext}
           widthCount={0.9}

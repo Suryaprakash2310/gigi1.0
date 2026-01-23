@@ -5,7 +5,7 @@ type VerifyOtpResponse = {
   token: string;
   user?: any; // add more fields as needed
   role?: string;
-  employeeId?: string;
+  id?: string;
 };
 
 export const AuthAPI = {
@@ -20,7 +20,7 @@ export const AuthAPI = {
     if (res.data?.token) {
       await AsyncStorage.setItem('token', res.data.token);
       await AsyncStorage.setItem('userRole', res.data.role);
-      await AsyncStorage.setItem('employeeId', res.data.employeeId);
+      await AsyncStorage.setItem('employeeId', res.data.id);
     }
 
     return res.data;

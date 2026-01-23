@@ -1,11 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect, createContext, ReactNode } from 'react';
+import { socket } from "@/socket/socket";
+import { UserRole } from '@/utils/enums/CommonEnum';
 
 // 👇 Define what data and functions are available in this context
 interface AuthContextType {
   userToken: string | null;
   userRole: string | null;
-  login: (role: string, token?: string) => Promise<void>;
+  login: (role: string, token?: string, id?: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -14,8 +16,8 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType>({
   userToken: null,
   userRole: null,
-  login: async () => {},
-  logout: async () => {},
+  login: async () => { },
+  logout: async () => { },
   isLoading: true,
 });
 
@@ -47,18 +49,104 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loadAuthData();
   }, []);
 
-  // Login → Save both token + role
-  const login = async (role: string, token?: string) => {
-    try {
-      const userToken = token; // || 'mock-token-123'; // fallback for testing
-      await AsyncStorage.setItem('userToken', userToken);
-      await AsyncStorage.setItem('userRole', role);
-      setUserToken(userToken);
-      setUserRole(role);
-    } catch (error) {
-      console.error('Login error:', error);
+
+
+  useEffect(() => {
+    if (userToken && userRole) {
+      console.log("🔌 Provider socket connecting...");
+      socket.connect();
     }
-  };
+
+    return () => {
+      if (socket.connected) {
+        console.log("❌ Provider socket disconnect");
+        socket.disconnect();
+      }
+    };
+  }, [userToken, userRole]);
+  useEffect(() => {
+    let isMounted = true;
+
+    const setupSocket = async () => {
+      const providerId = await AsyncStorage.getItem("providerId");
+      if (!providerId || !userRole) return;
+
+      // ✅ ensure connection
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      // ✅ wait until connected
+      socket.once("connect", () => {
+        if (!isMounted) return;
+
+        if (userRole === UserRole.SINGLE_EMPLOYEE) {
+          socket.emit("register-employee", { employeeId: providerId });
+        }
+
+        if (userRole === UserRole.MULTI_EMPLOYEE) {
+          socket.emit("register-team", { teamId: providerId });
+        }
+
+        if (userRole === UserRole.TOOL_SHOP) {
+          socket.emit("register-toolshop", { shopId: providerId });
+        }
+
+        console.log("✅ Provider registered:", userRole, providerId);
+      });
+    };
+
+    setupSocket();
+
+    return () => {
+
+      isMounted = false;
+    };
+  }, [userRole]);
+
+
+
+  useEffect(() => {
+    socket.on("new-booking-request", ({ bookingId }) => {
+      console.log("📥 New booking request:", bookingId);
+    });
+
+    socket.on("team-booking-request", ({ bookingId }) => {
+      console.log("🔥 TEAM REQUEST RECEIVED:", bookingId);
+    });
+
+    return () => {
+      socket.off("new-booking-request");
+      socket.off("team-booking-request");
+    };
+  }, []);
+
+
+
+
+
+  // Login → Save both token + role
+  const login = async (role: string, token?: string, id?: string) => {
+    console.log("🔐 Logging in:", { role, token, id });
+  try {
+    if (!token || !role) {
+      throw new Error("Invalid login data");
+    }
+
+    await AsyncStorage.setItem("userToken", token);
+    await AsyncStorage.setItem("userRole", role);
+
+    if (id) {
+      await AsyncStorage.setItem("providerId", id);
+    }
+
+    setUserToken(token);
+    setUserRole(role);
+  } catch (error) {
+    console.error("Login error:", error);
+  }
+};
+
 
   // Logout → Clear everything
   const logout = async () => {

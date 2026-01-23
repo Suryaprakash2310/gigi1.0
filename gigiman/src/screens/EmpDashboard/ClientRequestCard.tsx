@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,11 @@ interface Item {
   quantity: number;
 }
 
+interface TeamMember {
+  _id: string;
+  fullname: string;
+}
+
 interface ClientRequest {
   name: string;
   work?: string;
@@ -28,10 +33,21 @@ interface ClientRequest {
 
 interface ClientRequestCardProps {
   data: ClientRequest;
-  role?: 'employee' | 'toolshop';
+  role?: 'employee' | 'toolshop' | 'team_owner';
+
+  // common
   onAccept?: () => void;
   onReject?: () => void;
-  index?: number; // optional for staggered animation
+
+  // team owner only
+  teamMembers?: TeamMember[];
+  employeeCount?: number;
+  onTeamAccept?: (data: {
+    leaderEmpId: string;
+    helperEmpIds: string[];
+  }) => void;
+
+  index?: number;
 }
 
 export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
@@ -39,73 +55,85 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
   role = 'employee',
   onAccept,
   onReject,
+  teamMembers = [],
+  employeeCount = 1,
+  onTeamAccept,
   index = 0,
 }) => {
-  // Animation refs
+  /** animation */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
 
-  // Animate on mount
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      delay: index * 100, // stagger effect if used in a list
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 400,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 400,
-      delay: index * 100,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim, translateY, index]);
+  /** TEAM OWNER STATE */
+  const [leader, setLeader] = useState<string | null>(null);
+  const [helpers, setHelpers] = useState<string[]>([]);
+
+  const requiredHelpers = Math.max(employeeCount - 1, 0);
+
+  const toggleHelper = (id: string) => {
+    if (helpers.includes(id)) {
+      setHelpers(prev => prev.filter(h => h !== id));
+    } else {
+      if (helpers.length >= requiredHelpers) return;
+      setHelpers(prev => [...prev, id]);
+    }
+  };
+
+  // const canAccept =
+  //   role !== 'team_owner' ||
+  //   (leader &&
+  //     helpers.length === requiredHelpers &&
+  //     !helpers.includes(leader));
 
   return (
     <Animated.View
       style={[
         styles.card,
-        {
-          opacity: fadeAnim,
-          transform: [{ translateY }],
-        },
+        { opacity: fadeAnim, transform: [{ translateY }] },
       ]}
     >
       <Text style={styles.header}>CLIENT REQUEST</Text>
 
+      {/* BASIC INFO */}
       <View style={styles.infoContainer}>
         <Text style={styles.infoText}>
           NAME : <Text style={styles.value}>{data.name}</Text>
         </Text>
 
-        {role === 'toolshop' ? (
+        {role === 'toolshop' && (
           <>
-            {data.items?.map((item, index) => (
-              <View key={index} style={styles.modalRow}>
-                
-                            <Text style={styles.modalItem}>{item.name}</Text>
-                            <Text style={styles.modalQty}>x{item.quantity}</Text>
-                            <Text style={styles.modalPrice}>₹{data.total}</Text>
-                          
+            {data.items?.map((item, i) => (
+              <View key={i} style={styles.modalRow}>
+                <Text style={styles.modalItem}>{item.name}</Text>
+                <Text style={styles.modalQty}>x{item.quantity}</Text>
+                <Text style={styles.modalPrice}>₹{data.total}</Text>
               </View>
             ))}
-            {data.total && (
-              <Text style={[styles.infoText, { marginTop: 5 }]}>
-                TOTAL : <Text style={styles.value}>{data.total}</Text>
-              </Text>
-            )}
           </>
-        ) : (
+        )}
+
+        {role !== 'toolshop' && (
           <>
             {data.work && (
               <Text style={styles.infoText}>
                 WORK : <Text style={styles.value}>{data.work}</Text>
-              </Text>
-            )}
-            {data.cost && (
-              <Text style={styles.infoText}>
-                COST : <Text style={styles.value}>{data.cost}</Text>
               </Text>
             )}
             {data.address && (
@@ -117,20 +145,78 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
         )}
       </View>
 
+      {/* TEAM OWNER UI */}
+      {role === 'team_owner' && (
+        <>
+          <Text style={styles.sectionTitle}>Select Leader</Text>
+          {teamMembers.map(emp => (
+            <TouchableOpacity
+              key={emp._id}
+              style={[
+                styles.selectBox,
+                leader === emp._id && styles.selected,
+              ]}
+              onPress={() => setLeader(emp._id)}
+            >
+              <Text>{emp.fullname}</Text>
+            </TouchableOpacity>
+          ))}
+
+          {requiredHelpers > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>
+                Select Helpers ({requiredHelpers})
+              </Text>
+              {teamMembers.map(emp => (
+                <TouchableOpacity
+                  key={emp._id}
+                  disabled={emp._id === leader}
+                  style={[
+                    styles.selectBox,
+                    helpers.includes(emp._id) && styles.helperSelected,
+                    emp._id === leader && { opacity: 0.4 },
+                  ]}
+                  onPress={() => toggleHelper(emp._id)}
+                >
+                  <Text>{emp.fullname}</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ACTIONS */}
       <View style={styles.buttonRow}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.acceptBtn}
-          onPress={onAccept}
-        >
-          <Text style={styles.btnText}>Accept</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.rejectBtn}
           onPress={onReject}
         >
           <Text style={styles.btnText}>Reject</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          // disabled={!canAccept}
+          style={[
+            styles.acceptBtn,
+            // !canAccept && { opacity: 0.4 },
+          ]}
+          onPress={() => {
+            // if (role === 'team_owner' && onTeamAccept && leader) {
+            //   onTeamAccept({
+            //     leaderEmpId: leader,
+            //     helperEmpIds: helpers,
+            //   });
+            // } else {
+              onAccept?.();
+            // }
+          }}
+        >
+          <Text style={styles.btnText}>
+            {role === 'team_owner' ? 'Assign & Accept' : 'Accept'}
+          </Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -139,240 +225,96 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    width: width * 0.9,
+    width: width * 0.92,
     alignSelf: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
+    padding: 14,
     marginVertical: 8,
     elevation: Platform.OS === 'android' ? 4 : 0,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
   },
   header: {
-    fontSize: width * 0.045,
+    fontSize: 16,
     fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: 8,
     textAlign: 'center',
+    marginBottom: 8,
   },
   infoContainer: {
-    //marginVertical: 8,
     borderTopWidth: 1,
     borderColor: '#ddd',
-    padding: 8,
-    paddingRight:40
+    paddingTop: 8,
   },
   infoText: {
-    fontSize: width * 0.038,
-    color: '#333',
+    fontSize: 14,
     marginVertical: 2,
   },
   value: {
     fontWeight: '600',
-    color: '#000',
   },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginVertical: 2,
+  sectionTitle: {
+    marginTop: 12,
+    fontWeight: '700',
   },
-  itemName: {
-    fontSize: width * 0.038,
-    color: '#444',
-    //flex: 1,
+  selectBox: {
+    padding: 10,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    marginVertical: 4,
   },
-  itemQty: {
-    fontSize: width * 0.038,
-    fontWeight: '600',
-    color: '#111',
+  selected: {
+    backgroundColor: '#DCFCE7',
+  },
+  helperSelected: {
+    backgroundColor: '#DBEAFE',
   },
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginTop: 14,
   },
   acceptBtn: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: width * 0.025,
-    paddingHorizontal: width * 0.1,
+    backgroundColor: '#22C55E',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
     borderRadius: 8,
   },
   rejectBtn: {
-    backgroundColor: '#F44336',
-    paddingVertical: width * 0.025,
-    paddingHorizontal: width * 0.1,
+    backgroundColor: '#EF4444',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
     borderRadius: 8,
   },
   btnText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: width * 0.04,
   },
   modalRow: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginVertical: 6,
-},
-modalItem: {
-  flex: 1,
-  fontSize: 14,
-  color: '#333',
-},
-modalQty: {
-  width: 40,
-  textAlign: 'center',
-  fontWeight: '600',
-},
-modalPrice: {
-  width: 60,
-  textAlign: 'right',
-  fontWeight: '600',
-},
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalItem: { flex: 1 },
+  modalQty: { width: 40, textAlign: 'center' },
+  modalPrice: { width: 60, textAlign: 'right' },
 });
 
 
 
-// import React from 'react';
-// import { ScrollView, View, StyleSheet } from 'react-native';
-// import { ClientRequestCard } from '../../components/common/ClientRequestCard';
 
-// export const ToolShopDashboard = () => {
-//   const requests = [
-//     {
-//       id: 1,
-//       name: 'Suga',
-//       work: 'Pipe replacement',
-//       cost: '₹1200',
-//       address: 'Trichy',
-//     },
-//     {
-//       id: 2,
-//       name: 'Anbu',
-//       work: 'Switch setup',
-//       cost: '₹800',
-//       address: 'Madurai',
-//     },
-//   ];
+/*
+<ClientRequestCard
+  role="team_owner"
+  data={booking}
+  teamMembers={team.members}
+  employeeCount={booking.employeeCount}
+  onReject={() => socket.emit("team-reject", {...})}
+  onTeamAccept={({ leaderEmpId, helperEmpIds }) => {
+    socket.emit("team-accept", {
+      bookingId: booking._id,
+      teamId,
+      leaderEmpId,
+      helperEmpIds,
+    });
+  }}
+/>
 
-//   return (
-//     <View style={styles.container}>
-//       <ScrollView contentContainerStyle={styles.scroll}>
-//         {requests.map((req, index) => (
-//           <ClientRequestCard
-//             key={req.id}
-//             data={req}
-//             role="toolshop"
-//             index={index}
-//             onAccept={() => console.log('Accept', req.id)}
-//             onReject={() => console.log('Reject', req.id)}
-//           />
-//         ))}
-//       </ScrollView>
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#F9F9F9', paddingTop: 40 },
-//   scroll: { paddingBottom: 80 },
-// });
-
-
-
-// import React, { useState } from 'react';
-// import { View, Text, StyleSheet, ScrollView, Switch, Dimensions } from 'react-native';
-// import { ClientRequestCard } from '../../components/common/ClientRequestCard';
-// import { theme } from '../../theme/theme';
-
-// const { width } = Dimensions.get('window');
-
-// export const EmployeeDashboard = () => {
-//   const [workingMode, setWorkingMode] = useState(true);
-
-//   // 🔹 Sample data (replace later with API data)
-//   const [clientRequests, setClientRequests] = useState([
-//     {
-//       id: 1,
-//       name: 'Suga',
-//       items: [
-//         { name: 'Tap', quantity: 20 },
-//         { name: 'Pipe', quantity: 5 },
-//       ],
-//       total: 500,
-//     },
-//     {
-//       id: 2,
-//       name: 'Anbu',
-//       items: [
-//         { name: 'Switch', quantity: 10 },
-//         { name: 'Wire', quantity: 15 },
-//       ],
-//       total: 800,
-//     },
-//   ]);
-
-//   // 🔹 Handlers
-//   const handleAccept = (id: number) => {
-//     console.log(`Accepted Request ID: ${id}`);
-//   };
-
-//   const handleReject = (id: number) => {
-//     console.log(`Rejected Request ID: ${id}`);
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       {/* ✅ Header */}
-//       <View style={styles.headerContainer}>
-//         <Text style={styles.headerText}>GIGIMAN</Text>
-//         <Switch
-//           value={workingMode}
-//           onValueChange={setWorkingMode}
-//           trackColor={{ false: '#767577', true: theme.colors.primary }}
-//           thumbColor={workingMode ? '#fff' : '#f4f3f4'}
-//         />
-//       </View>
-
-//       {/* ✅ Scrollable Request List */}
-//       <ScrollView contentContainerStyle={styles.scrollArea}>
-//         {clientRequests.map((req, index) => (
-//           <ClientRequestCard
-//             key={req.id}
-//             data={req}
-//             role="employee"
-//             index={index}
-//             onAccept={() => handleAccept(req.id)}
-//             onReject={() => handleReject(req.id)}
-//           />
-//         ))}
-//       </ScrollView>
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#F9F9F9',
-//     paddingTop: 40,
-//   },
-//   headerContainer: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//     paddingHorizontal: width * 0.05,
-//     marginBottom: 10,
-//   },
-//   headerText: {
-//     fontSize: width * 0.05,
-//     fontWeight: '700',
-//     color: theme.colors.primary,
-//   },
-//   scrollArea: {
-//     paddingBottom: 80,
-//   },
-// });
+*/

@@ -7,7 +7,18 @@ export interface TeamRequestItem {
 }
 
 export interface GetTeamRequestResponse {
-  team: TeamRequestItem[];
+  success: boolean;
+  count: number;
+  teams: TeamRequestItem[];
+}
+
+export interface MyTeamResponse {
+  success: boolean;
+  team: {
+    TeamId: string;
+    storeName: string;
+    ownerName: string;
+  } | null;
 }
 
 export const TeamRequestAPI = {
@@ -25,6 +36,15 @@ export const TeamRequestAPI = {
     const res = await apiClient.post("/singleemployee/reject-requests", {
       teamId,
     });
+    return res.data;
+  },
+  getMyTeam: async (): Promise<MyTeamResponse> => {
+    const res = await apiClient.get<MyTeamResponse>("/singleemployee/my-team");
+    return res.data;
+  },
+
+  leaveTeam: async () => {
+    const res = await apiClient.post("/singleemployee/leave-team");
     return res.data;
   },
 };

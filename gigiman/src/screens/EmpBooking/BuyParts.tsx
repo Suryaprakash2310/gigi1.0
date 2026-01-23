@@ -13,25 +13,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme/theme";
 import SearchBar from "../../components/SearchBar";
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { BookingStackParamList } from "../../navigation/EmpBookingStack";
 import BottomButton from "../../components/Bottom";
 import AppHeader from "../../components/AppHeader";
 import { fetchCategories, fetchParts } from "@/api/parts.api";
+import { createPartRequest } from "@/api/parts.api";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useRoute, RouteProp } from "@react-navigation/native";
+
 
 type BookingNavProp = NativeStackNavigationProp<
   BookingStackParamList,
-  "Booking"
+  "PartBuying"
 >;
 
-const { height } = Dimensions.get("window");
+
+type PartsRouteProp = RouteProp<
+  BookingStackParamList,
+  "PartBuying"
+>;
+
+
 
 // -------------------------
 // PART ITEM TYPE
 // -------------------------
 interface PartItem {
-  _id?: string;
-  partsname: string;
+  _id: string;
+  partName: string;
   price: number;
   quantity: number;
 }
@@ -48,8 +58,44 @@ const PartsScreen = () => {
   const [parts, setParts] = useState<PartItem[]>([]);
   const [filteredParts, setFilteredParts] = useState<PartItem[]>([]);
   const [loadingParts, setLoadingParts] = useState(false);
+  const route = useRoute<PartsRouteProp>();
+const { bookingId } = route.params;
+const [submitting, setSubmitting] = useState(false);
 
-  const mockJobId = "j1"; // TODO: replace when integrating real job flow
+
+//const { height } = Dimensions.get("window");
+  
+
+  const handleConfirm = async () => {
+    console.log("++++++++++++Confirming part request...");
+  if (submitting) return;
+
+  try {
+    setSubmitting(true);
+
+    const payload = selectedParts.map(p => ({
+      partsId: p._id,
+      partName: p.partName,
+      quantity: p.quantity,
+      price: p.price,
+    }));
+    console.log("++++++++++++Payload:", payload);
+
+    await createPartRequest(bookingId, payload, total);
+    
+
+    navigation.goBack();
+
+  } catch (err: any) {
+    alert(err.message || "Failed to request parts");
+  } finally {
+    setSubmitting(false);
+  }
+};
+
+
+
+
 
   // Load categories on mount
   useEffect(() => {
@@ -76,12 +122,12 @@ const PartsScreen = () => {
     setSelectedCategory(cat._id);
     setLoadingParts(true);
 
-    const res = await fetchParts(mockJobId, cat._id);
+    const res = await fetchParts(bookingId, cat._id);
 
     const formatted: PartItem[] = res.parts.map((p: any, index: number) => ({
-      _id: p._id ?? String(index),
-      partsname: p.partsname,
-      price: Number(p.price) || 0,
+      _id: `${cat._id}-${index}`,
+      partName: p.partName,
+      price: Number(p.price) ,
       quantity: 0,
     }));
 
@@ -144,7 +190,7 @@ const PartsScreen = () => {
   // -------------------------
   const renderItem = ({ item }: { item: PartItem }) => (
     <View style={styles.card}>
-      <Text style={styles.partName}>{item.partsname}</Text>
+      <Text style={styles.partName}>{item.partName}</Text>
 
       <View style={styles.quantityRow}>
         <TouchableOpacity
@@ -172,131 +218,126 @@ const PartsScreen = () => {
   // UI
   // -------------------------
   return (
-  <SafeAreaView style={styles.safeArea}>
-    <AppHeader
-      title="Buy Parts"
-      showBack={true}
-      onBackPress={() => navigation.goBack()}
-    />
+    <SafeAreaView style={styles.safeArea}>
+      <AppHeader
+        title="Buy Parts"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+      />
 
-    <View style={styles.container}>
+      <View style={styles.container}>
 
-      {/* Category Pills */}
-      <FlatList
-        data={categories}
-        horizontal
-        keyExtractor={(item) => item._id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 10 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[
-              styles.categoryPill,
-              selectedCategory === item._id && styles.categoryPillActive,
-            ]}
-            onPress={() => onCategorySelect(item)}
-          >
-            <Text
+        {/* Category Pills */}
+        <FlatList
+          data={categories}
+          horizontal
+          keyExtractor={(item) => item._id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingVertical: 10 }}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              activeOpacity={0.8}
               style={[
-                styles.categoryPillText,
-                selectedCategory === item._id && styles.categoryPillTextActive,
+                styles.categoryPill,
+                selectedCategory === item._id && styles.categoryPillActive,
               ]}
+              onPress={() => onCategorySelect(item)}
             >
-              {item.domaintoolname}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-
-      {/* Search */}
-      <SearchBar
-        placeholder="Search parts..."
-        data={parts}
-        searchKey="partsname"
-        onResults={setFilteredParts}
-      />
-
-      {loadingParts && (
-        <ActivityIndicator
-          size="small"
-          color={theme.colors.primary}
-          style={{ marginTop: 10 }}
-        />
-      )}
-
-      {/* Parts List */}
-      <FlatList
-        data={filteredParts}
-        keyExtractor={(item) => item._id!}
-        renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
-      />
-
-      {/* Floating Button */}
-      <View style={styles.floatingButtonWrapper}>
-        <BottomButton
-          title="Send to Toolshop"
-          onPress={handleSend}
-          widthCount={0.9}
-        />
-      </View>
-    </View>
-
-    {/* Premium Modal */}
-    {showConfirmModal && (
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Confirm Your Order</Text>
-
-          <FlatList
-            data={selectedParts}
-            keyExtractor={(item) => item._id!}
-            renderItem={({ item }) => (
-              <View style={styles.modalRow}>
-                <Text style={styles.modalItem}>{item.partsname}</Text>
-                <Text style={styles.modalQty}>x{item.quantity}</Text>
-                <Text style={styles.modalPrice}>
-                  ₹{item.price * item.quantity}
-                </Text>
-              </View>
-            )}
-          />
-
-          <View style={styles.modalFooter}>
-            <Text style={styles.modalTotal}>Total: ₹{total}</Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#ccc" }]}
-                onPress={() => setShowConfirmModal(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
+              <Text
                 style={[
-                  styles.modalButton,
-                  { backgroundColor: theme.colors.primary },
+                  styles.categoryPillText,
+                  selectedCategory === item._id && styles.categoryPillTextActive,
                 ]}
-                onPress={() => {
-                  setShowConfirmModal(false);
-                  navigation.navigate("Booking", {
-                    partsbuyed: true,
-                    requestId: "REQ12345",
-                  });
-                }}
               >
-                <Text style={styles.modalButtonText}>Confirm</Text>
-              </TouchableOpacity>
+                {item.domainPartsName}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+
+        {/* Search */}
+        <SearchBar
+          placeholder="Search parts..."
+          data={parts}
+          searchKey="partName"
+          onResults={setFilteredParts}
+        />
+
+        {loadingParts && (
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.primary}
+            style={{ marginTop: 10 }}
+          />
+        )}
+
+        {/* Parts List */}
+        <FlatList
+          data={filteredParts}
+          keyExtractor={(item) => item._id!}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 120 }}
+        />
+
+        {/* Floating Button */}
+        <View style={styles.floatingButtonWrapper}>
+          <BottomButton
+            title="Send to Toolshop"
+            onPress={handleSend}
+            widthCount={0.9}
+          />
+        </View>
+      </View>
+
+      {/* Premium Modal */}
+      {showConfirmModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Confirm Your Order</Text>
+
+            <FlatList
+              data={selectedParts}
+              keyExtractor={(item) => item._id!}
+              renderItem={({ item }) => (
+                <View style={styles.modalRow}>
+                  <Text style={styles.modalItem}>{item.partName}</Text>
+                  <Text style={styles.modalQty}>x{item.quantity}</Text>
+                  <Text style={styles.modalPrice}>
+                    ₹{item.price * item.quantity}
+                  </Text>
+                </View>
+              )}
+            />
+
+            <View style={styles.modalFooter}>
+              <Text style={styles.modalTotal}>Total: ₹{total}</Text>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: "#ccc" }]}
+                  onPress={() => setShowConfirmModal(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: theme.colors.primary },
+                  ]}
+                  onPress={handleConfirm}
+                >
+                  <Text style={styles.modalButtonText}>Confirm</Text>
+                </TouchableOpacity>
+
+              </View>
             </View>
           </View>
         </View>
-      </View>
-    )}
-  </SafeAreaView>
-);
+      )}
+    </SafeAreaView>
+  );
 
 };
 
@@ -408,7 +449,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 16,
     padding: 20,
-    maxHeight: height * 0.6,
+    //maxHeight: height * 0.6,
   },
   modalTitle: {
     fontSize: 20,

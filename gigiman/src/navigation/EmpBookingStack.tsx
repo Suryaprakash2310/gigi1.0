@@ -4,8 +4,8 @@ import { EmpBookingScreen } from '../screens/EmpBooking';
 import PartsBuying from '../screens/EmpBooking/BuyParts';
 //import { PartsBuying } from '../screens/EmpBooking/BuyParts';
 export type BookingStackParamList = {
-  Booking: {partsbuyed?: boolean, requestId?: string},
-  PartBuying: undefined;
+  Booking: {partsbuyed?: boolean, bookingId: string},
+  PartBuying: {bookingId: string};
  
 };
 
