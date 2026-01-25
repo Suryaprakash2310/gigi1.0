@@ -1,55 +1,48 @@
-import React, { createContext, useState, useEffect, ReactNode } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useEffect, useState, ReactNode, useContext } from "react";
 import { ProfileAPI } from "@/api/profile.api";
+import { AuthContext } from "./AuthContext";
 
 interface ProfileContextType {
   profile: any;
-  loadingProfile: boolean;
+  loading: boolean;
   refreshProfile: () => Promise<void>;
 }
 
 export const ProfileContext = createContext<ProfileContextType>({
   profile: null,
-  loadingProfile: false,
+  loading: false,
   refreshProfile: async () => {},
 });
 
 export const ProfileProvider = ({ children }: { children: ReactNode }) => {
+  const { userToken } = useContext(AuthContext);
   const [profile, setProfile] = useState<any>(null);
-  const [loadingProfile, setLoadingProfile] = useState(false);
-
-  // ==============================
-  // Load Profile on App Start
-  // ==============================
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  const [loading, setLoading] = useState(false);
 
   const loadProfile = async () => {
+    if (!userToken) {
+      console.log("❌ No token, skipping profile load");
+      return;
+    }
     try {
-      setLoadingProfile(true);
-      const token = await AsyncStorage.getItem("userToken");
-
-      if (!token) return;
-
-      const res = await ProfileAPI.getProfile(token);
-      setProfile(res);
-      console.log("Profile Loaded:", res);
+      console.log("⏳ Loading profile...");
+      setLoading(true);
+      const employee = await ProfileAPI.getProfile(userToken);
+      setProfile(employee);
+      console.log("✅ Profile Loaded:", employee.role);
     } catch (err) {
-      console.log("Profile Load Error:", err);
+      console.error("❌ Profile load error:", err);
     } finally {
-      setLoadingProfile(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadProfile();
+  }, [userToken]);
+
   return (
-    <ProfileContext.Provider
-      value={{
-        profile,
-        loadingProfile,
-        refreshProfile: loadProfile,
-      }}
-    >
+    <ProfileContext.Provider value={{ profile, loading, refreshProfile: loadProfile }}>
       {children}
     </ProfileContext.Provider>
   );

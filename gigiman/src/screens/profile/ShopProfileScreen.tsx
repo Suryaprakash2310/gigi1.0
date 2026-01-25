@@ -1,5 +1,5 @@
 // src/screens/ToolShopProfileScreen.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,40 +12,31 @@ import {
   RefreshControl,
 } from 'react-native';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
-import { ProfileAPI } from '@/api/profile.api';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { theme } from '../../theme/theme';
+import { ProfileContext } from '@/context/ProfileContext';
+
 
 export default function ToolShopProfileScreen({ navigation }: any) {
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+   const { profile, loading, refreshProfile } = useContext(ProfileContext);
   const [refreshing, setRefreshing] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  if (!profile && loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
-      const res = await ProfileAPI.getProfile(token);
-      setProfile(res);
-    } catch (err: any) {
-      console.error('Profile load error', err);
-      Alert.alert('Error', err?.message || 'Failed to load profile');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!profile) return null;
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadProfile();
-    setRefreshing(false);
-  };
+  setRefreshing(true);
+  await refreshProfile();
+  setRefreshing(false);
+};
+
 
   const menu = [
     { key: 'pending', icon: 'time-outline', title: 'Pending Requests', subtitle: 'New orders' },
@@ -55,23 +46,15 @@ export default function ToolShopProfileScreen({ navigation }: any) {
     { key: 'settings', icon: 'settings-outline', title: 'Shop Settings' },
   ];
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
-    );
-  }
+  
 
   const headerProps = {
     scrollY,
-    name: profile?.employee.shopName || profile?.employee.ownerName || 'Shop Name',
-    idText: `Shop ID: ${profile?.employee.shopId || profile?.employee._id || '—'}`,
-    subtitle: profile?.employee.domain || 'Local Shop',
-    verified: !!profile?.employee.verified,
-    avatarUri: profile?.employee.logo,
-    bannerUri: profile?.employee.banner,
-    onEdit: () => navigation.navigate('EditShop'),
+    name: profile.shopName,
+    idText: `Shop ID: ${profile.toolShopId}`,
+    subtitle: profile.role,
+    verified: profile.verified === "Yes",
+    onEdit: () => navigation.navigate("EditProfile"),
   };
 
   return (

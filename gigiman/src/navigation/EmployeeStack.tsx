@@ -4,11 +4,10 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 //import { HomeScreen } from '../screens/HomeScreen';
 import {EmpBookingScreen} from '../screens/EmpBooking/index';
 //import ToolShopScreen from '../screens/ToolShopScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import { EmpDashboard } from '../screens/EmpDashboard';
 import { theme } from '../theme/theme'; // optional if you have a theme file
 import EmpBookingStack, { BookingStackParamList } from './EmpBookingStack';
-import EmpProfileScreen from '../screens/EmpProfileScreen';
+import EmpProfileScreen from '../screens/profile/EmpProfileScreen';
 import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
 import { TeamEmployeeScreen } from '@/screens/team/TeamDashboardScreen';
 import PocketStack from './PocketStack';

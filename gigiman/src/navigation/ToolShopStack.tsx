@@ -7,14 +7,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ToolShopDashboard } from "../screens/ShopDashboard";
 import { ToolShopBooking } from "../screens/ShopBooking";
-import ToolShopProfileScreen from "../screens/ShopProfileScreen";
+import ToolShopProfileScreen from "../screens/profile/ShopProfileScreen";
+import ToolShopProfileStack from "./ToolShopProfileStack";
 // import TeamDashboardScreen from "@/screens/team/TeamDashboardScreen";
 // import TeamMembersScreen from "@/screens/team/TeamEmployeeScreen";
 
 export type ToolShopStackParamList = {
   Dashboard: undefined;
   Booking: { initialTab?: string; requestId?: string };
-  profile: undefined;
+  profileTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<ToolShopStackParamList>();
@@ -31,8 +32,8 @@ export default function ToolShopTabNavigator() {
         tabBarStyle: [
           styles.tabBar,
           {
-            height: Platform.OS === "ios" ? 85 : 70,
-            paddingBottom: Platform.OS === "ios" ? insets.bottom + 5 : 10,
+            height: 60 + insets.bottom,
+            paddingBottom: insets.bottom ? insets.bottom + 8 : 12,
           },
         ],
 
@@ -57,12 +58,7 @@ export default function ToolShopTabNavigator() {
           }
 
           return (
-            <Ionicons
-              name={iconName}
-              size={24}
-              color={color}
-              style={{ marginTop: 4 }}
-            />
+            <Ionicons name={iconName} size={24} color={color} />
           );
         },
       })}
@@ -70,7 +66,7 @@ export default function ToolShopTabNavigator() {
       {/* <Tab.Screen name="Dashboard" component={TeamMembersScreen} /> */}
       <Tab.Screen name="Dashboard" component={ToolShopDashboard} />
       <Tab.Screen name="Booking" component={ToolShopBooking} />
-      <Tab.Screen name="profile" component={ToolShopProfileScreen} />
+      <Tab.Screen name="profileTab" component={ToolShopProfileStack} />
     </Tab.Navigator>
   );
 }
@@ -80,9 +76,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopWidth: 0.8,
     borderTopColor: "#e0e0e0",
-    position: "absolute",
-    left: 0,
-    right: 0,
+    // avoid absolute positioning so tab bar stays in layout flow
     elevation: 3, // Android shadow
     shadowColor: "#000",
     shadowOpacity: 0.08,

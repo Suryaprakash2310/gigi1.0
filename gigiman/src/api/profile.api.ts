@@ -15,18 +15,22 @@ export interface EmployeeProfile {
   storeLocation?: string;
 }
 
+export interface GetProfileResponse {
+  success: boolean;
+  employee: EmployeeProfile;
+}
+
+
 export const ProfileAPI = {
   async getProfile(token: string): Promise<EmployeeProfile> {
-    const res = await apiClient.get<EmployeeProfile>(`/profile/getprofile`, {
+    const res = await apiClient.get<GetProfileResponse>(`/profile/getprofile`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.data;
+    return res.data.employee;
   },
 
-  async editProfile(token: string, payload: Record<string, any>): Promise<EmployeeProfile> {
-    const res = await apiClient.put<EmployeeProfile>(`/profile/editprofile`, payload, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  async editProfile(payload: Record<string, any>): Promise<EmployeeProfile> {
+    const res = await apiClient.put<EmployeeProfile>(`/profile/edit-profile`, payload);
     return res.data;
   },
 };

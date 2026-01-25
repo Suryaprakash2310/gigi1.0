@@ -17,7 +17,7 @@ import {
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 //import { ProfileAPI } from '@/api/profile.api';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/theme';
+import { theme } from '../../theme/theme';
 import { ProfileAPI } from '@/api/profile.api';
 import { ProfileContext } from '@/context/ProfileContext';
 import { AuthContext } from '@/context/AuthContext';
@@ -67,8 +67,8 @@ export default function EmployeeProfileScreen({ navigation }: any) {
   };
 
   const menu: MenuItem[] = [
-    { key: 'jobs', icon: 'briefcase-outline', title: 'Job History', subtitle: 'Completed & ongoing', onPress: () => userRole === UserRole.MULTI_EMPLOYEE ? navigation.navigate('team') : navigation.navigate('TeamRequest') },
-    { key: 'today', icon: 'time-outline', title: "Today's Job", subtitle: 'Active job' },
+    { key: 'jobs', icon: 'briefcase-outline', title: 'Team Management', subtitle: 'Current team', onPress: () => userRole === UserRole.MULTI_EMPLOYEE ? navigation.navigate('team') : navigation.navigate('TeamRequest') },
+    { key: 'today', icon: 'time-outline', title: "Job", subtitle: 'Active job' },
     { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', subtitle: 'Week / Month' },
     { key: 'tools', icon: 'construct-outline', title: 'Tools Needed', subtitle: 'Manage tools' },
     { key: 'bank', icon: 'card-outline', title: 'Banking', subtitle: 'Payout & account' },
@@ -86,13 +86,11 @@ export default function EmployeeProfileScreen({ navigation }: any) {
 
   const headerProps = {
     scrollY,
-    name: profile?.employee.fullname || profile?.employee.name || 'Unknown',
-    idText: `ID: ${profile?.employee.empId || profile?.employee._id || '—'}`,
-    subtitle: profile?.employee.role || 'Worker',
-    verified: !!profile?.employee.verified,
-    avatarUri: profile?.employee.avatar,
-    bannerUri: profile?.employee.banner,
-    onEdit: () => navigation.navigate('EditProfile'),
+    name: profile.fullname,
+    idText: `ID: ${profile.empId}`,
+    subtitle: profile.role,
+    verified: profile.verified === "Yes",
+    onEdit: () => navigation.navigate("EditProfile"),
   };
 
   return (
