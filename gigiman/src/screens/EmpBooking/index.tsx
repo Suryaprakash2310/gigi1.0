@@ -94,8 +94,14 @@ export const EmpBookingScreen = () => {
   useEffect(() => {
     const loadBooking = async () => {
       try {
+        console.log("Started");
         const res = await apiClient.get(`/booking/${bookingId}`);
-        setJob(res.data);
+        console.log('booking response', res.data.booking);
+        // backend returns { success: true, booking: { ... } }
+        // prefer the booking payload but fall back to whole response
+        const jobPayload = res.data?.booking ?? res.data;
+        console.log('job payload ->', jobPayload);
+        setJob(jobPayload);
       } catch (err) {
         Alert.alert("Error", "Failed to load booking");
       } finally {
@@ -267,7 +273,7 @@ useEffect(() => {
   if (!bookingId) {
     return (
       <View style={styles.loaderContainer}>
-        <Text>Invalid booking</Text>
+        <Text>No booking</Text>
       </View>
     );
   }
