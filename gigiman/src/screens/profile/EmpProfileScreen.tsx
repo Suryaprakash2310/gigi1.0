@@ -21,6 +21,7 @@ import { theme } from '../../theme/theme';
 import { ProfileAPI } from '@/api/profile.api';
 import { ProfileContext } from '@/context/ProfileContext';
 import { AuthContext } from '@/context/AuthContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { UserRole } from '@/utils/enums/CommonEnum';
 
 type MenuItem = {
@@ -36,7 +37,8 @@ export default function EmployeeProfileScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { profile, refreshProfile } = useContext(ProfileContext);
-  const { userRole } = useContext(AuthContext);
+  const { userRole, logout } = useContext(AuthContext);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   
 
@@ -74,6 +76,7 @@ export default function EmployeeProfileScreen({ navigation }: any) {
     { key: 'bank', icon: 'card-outline', title: 'Banking', subtitle: 'Payout & account' },
     { key: 'support', icon: 'help-circle-outline', title: 'Support', subtitle: 'Contact us' },
     { key: 'settings', icon: 'settings-outline', title: 'Settings' },
+    { key: 'logout', icon: 'log-out-outline', title: 'Logout' },
   ];
 
   // if (loading) {
@@ -156,7 +159,13 @@ export default function EmployeeProfileScreen({ navigation }: any) {
             <TouchableOpacity
               key={m.key}
               style={styles.menuRow}
-              onPress={() => m.onPress && m.onPress()}
+              onPress={() => {
+                if (m.key === 'logout') {
+                  setConfirmVisible(true);
+                } else {
+                  m.onPress && m.onPress();
+                }
+              }}
             >
               <View style={styles.menuLeft}>
                 <Ionicons name={m.icon as any} size={22} color={theme.colors.primary} />
@@ -169,6 +178,23 @@ export default function EmployeeProfileScreen({ navigation }: any) {
             </TouchableOpacity>
           ))}
         </View>
+
+        <ConfirmDialog
+          visible={confirmVisible}
+          title="Logout"
+          message="Are you sure you want to logout?"
+          confirmText="Logout"
+          cancelText="Cancel"
+          onCancel={() => setConfirmVisible(false)}
+          onConfirm={async () => {
+            setConfirmVisible(false);
+            try {
+              await logout();
+            } catch (err) {
+              console.error('Logout failed', err);
+            }
+          }}
+        />
 
         <View style={{ height: 40 }} />
       </Animated.ScrollView>

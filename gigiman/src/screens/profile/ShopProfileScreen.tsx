@@ -15,11 +15,16 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme/theme';
 import { ProfileContext } from '@/context/ProfileContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { AuthContext } from '@/context/AuthContext';
 
 
 export default function ToolShopProfileScreen({ navigation }: any) {
-   const { profile, loading, refreshProfile } = useContext(ProfileContext);
+  const { profile, loading, refreshProfile } = useContext(ProfileContext);
+  const { logout } = useContext(AuthContext);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   if (!profile && loading) {
     return (
@@ -44,6 +49,7 @@ export default function ToolShopProfileScreen({ navigation }: any) {
     { key: 'inventory', icon: 'layers-outline', title: 'Inventory & Tools' },
     { key: 'earnings', icon: 'wallet-outline', title: 'Earnings' },
     { key: 'settings', icon: 'settings-outline', title: 'Shop Settings' },
+    { key: 'logout', icon: 'log-out-outline', title: 'Logout' },
   ];
 
   
@@ -117,7 +123,18 @@ export default function ToolShopProfileScreen({ navigation }: any) {
           <Text style={styles.sectionTitle}>Menu</Text>
 
           {menu.map((m) => (
-            <TouchableOpacity key={m.key} style={styles.menuRow} onPress={() => Alert.alert(m.title)}>
+            <TouchableOpacity
+              key={m.key}
+              style={styles.menuRow}
+              onPress={() => {
+                if (m.key === 'logout') {
+                  setSelectedAction('logout');
+                  setConfirmVisible(true);
+                } else {
+                  Alert.alert(m.title);
+                }
+              }}
+            >
               <View style={styles.menuLeft}>
                 <Ionicons name={m.icon as any} size={22} color={theme.colors.primary} />
                 <View style={{ marginLeft: 12 }}>
@@ -129,6 +146,23 @@ export default function ToolShopProfileScreen({ navigation }: any) {
             </TouchableOpacity>
           ))}
         </View>
+
+        <ConfirmDialog
+          visible={confirmVisible}
+          title="Logout"
+          message="Are you sure you want to logout?"
+          confirmText="Logout"
+          cancelText="Cancel"
+          onCancel={() => setConfirmVisible(false)}
+          onConfirm={async () => {
+            setConfirmVisible(false);
+            try {
+              await logout();
+            } catch (err) {
+              console.error('Logout failed', err);
+            }
+          }}
+        />
 
         <View style={{ height: 40 }} />
       </Animated.ScrollView>
