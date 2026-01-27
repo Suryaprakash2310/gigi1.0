@@ -38,7 +38,7 @@ export interface PartRequest {
 
 
 export const fetchCategories = async (): Promise<CategoriesResponse> => {
-  const res = await apiClient.get<CategoriesResponse>("/parts/categories", {
+  const res = await apiClient.get<CategoriesResponse>("/parts/showCategories", {
     //params: { jobId },
   });
   return res.data;

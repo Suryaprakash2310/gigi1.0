@@ -28,8 +28,9 @@ export default function PhoneNumberScreen() {
     // TODO: connect backend for OTP generation
     try {
       setLoading(true);
-      await AuthAPI.sendOtp(phone.trim());
-      alert('OTP sent successfully');
+      const res= await AuthAPI.sendOtp(phone.trim());
+      alert('OTP sent successfully::::'+ res.otp);
+      console.log('OTP Response:', res);
        navigation.navigate('otp', { phone });
        //navigation.navigate('otp', { phone });
     } catch (e) {

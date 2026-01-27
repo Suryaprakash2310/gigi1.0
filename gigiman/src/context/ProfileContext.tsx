@@ -29,7 +29,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       const employee = await ProfileAPI.getProfile(userToken);
       setProfile(employee);
-      console.log("✅ Profile Loaded:", employee.role);
+      console.log("✅ Profile Loaded:", employee);
     } catch (err) {
       console.error("❌ Profile load error:", err);
     } finally {

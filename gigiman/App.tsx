@@ -5,15 +5,18 @@ import { ThemeProvider } from './src/context/ThemeContext';
 import './src/i18n';
 import { BottomSheetProvider } from './src/context/BottomSheetContext';
 import { ProfileProvider } from '@/context/ProfileContext';
+import { BookingHistoryProvider } from '@/context/BookingHistoryContext';
 
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <ProfileProvider>
-          <BottomSheetProvider>
-            <RootNavigator />
-          </BottomSheetProvider>
+          <BookingHistoryProvider>
+            <BottomSheetProvider>
+              <RootNavigator />
+            </BottomSheetProvider>
+          </BookingHistoryProvider>
         </ProfileProvider>
       </AuthProvider>
     </ThemeProvider>

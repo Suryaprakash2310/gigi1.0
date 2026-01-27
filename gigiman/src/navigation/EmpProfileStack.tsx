@@ -6,6 +6,7 @@ import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
 import EmployeeProfileScreen from '@/screens/profile/EmpProfileScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import EditProfileScreen from '@/screens/profile/EditProfileScreen';
+import RecentBookingHistoryScreen from '@/screens/profile/RecentBookingHistoryScreen';
 
 export type EmpProfileStackParamList = {
     Profile: undefined;
@@ -13,6 +14,7 @@ export type EmpProfileStackParamList = {
     AddEmp: undefined;
     TeamRequest: undefined;
     EditProfile: undefined;
+    RecentBookingHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<EmpProfileStackParamList>();
@@ -25,6 +27,8 @@ export default function EmpProfileStack() {
       <Stack.Screen name="AddEmp" component={AddEmployeeScreen} />
       <Stack.Screen name="TeamRequest" component={TeamRequestsScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="RecentBookingHistory" component={RecentBookingHistoryScreen} />
+
 
     </Stack.Navigator>
   );

@@ -13,7 +13,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { useRoute, RouteProp, useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { UserDetailContainer } from './UserDetailContainer';
 import { theme } from '../../theme/theme';
@@ -24,7 +24,9 @@ import { BookingStackParamList } from '../../navigation/EmpBookingStack';
 import { AppStackParamList } from '../../navigation/EmployeeStack';
 import { socket } from '@/socket/socket';
 import apiClient from '@/api/client';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { paymentSuccessApi } from '@/api/payment.api';
+import { AuthContext } from '@/context/AuthContext';
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
 
 const { width } = Dimensions.get('window');
 
@@ -34,7 +36,7 @@ type BookingRouteProp = RouteProp<
   "Booking"
 >;
 
-type BookingNavProp = BottomTabNavigationProp<
+type BookingNavProp = NativeStackNavigationProp<
   BookingStackParamList,
   "Booking"
 >;
@@ -42,8 +44,71 @@ type BookingNavProp = BottomTabNavigationProp<
 export const EmpBookingScreen = () => {
   const navigation = useNavigation<BookingNavProp>();
   const route = useRoute<BookingRouteProp>();
-
   const { bookingId } = route.params ?? {};
+
+  const handleCashPayment = async () => {
+    try {
+      const res = await paymentSuccessApi({
+        bookingId: bookingId,
+        paymentMethod: "CASH",
+      });
+
+      Alert.alert("Success", "Payment completed");
+      navigation.navigate("Razorpay", {
+        bookingId: bookingId,
+        amount: job.totalPrice,
+        orderId: job.razorpayOrderId, // backend should already have it
+      });
+
+      //   navigation.navigate("BookingCompleted", {
+      //   bookingId: job._id,
+      // });
+
+    } catch (err: any) {
+      Alert.alert(
+        "Payment Failed",
+        err?.response?.data?.message || "Something went wrong"
+      );
+    }
+  };
+  const handleRazorpayPayment = async () => {
+    try {
+      // const options = {
+      //   description: "Gigiman Service Payment",
+      //   currency: "INR",
+      //   key: RAZORPAY_KEY_ID,
+      //   amount: job.totalPrice * 100,
+      //   name: "Gigiman",
+      //   prefill: {
+      //     contact: user.phone,
+      //     name: user.fullName,
+      //   },
+      // };
+
+
+      await paymentSuccessApi({
+        bookingId: bookingId,
+        paymentMethod: "RAZORPAY",
+        // razorpayOrderId: paymentData.razorpay_order_id,
+        // razorpayPaymentId: paymentData.razorpay_payment_id,
+        // razorpaySignature: paymentData.razorpay_signature,
+      });
+
+      Alert.alert("Success", "Payment completed");
+
+      navigation.navigate("Razorpay", {
+        bookingId: bookingId,
+        amount: job.totalPrice,
+        orderId: job.razorpayOrderId, // backend should already have it
+      });
+
+    } catch (err: any) {
+      Alert.alert("Payment cancelled or failed");
+    }
+  };
+
+
+
 
   console.log("🧭 bookingId:", bookingId);
 
@@ -60,6 +125,7 @@ export const EmpBookingScreen = () => {
   const [loading, setLoading] = useState(true);
   const [partRequest, setPartRequest] = useState<any>(null);
   const [waitingApproval, setWaitingApproval] = useState(false);
+  const [partsCollected, setPartsCollected] = useState(false);
 
   //   const PART_REQUEST_STATUS = {
   //   REQUESTED: "REQUESTED",
@@ -95,11 +161,11 @@ export const EmpBookingScreen = () => {
     const loadBooking = async () => {
       try {
         console.log("Started");
-        const res = await apiClient.get(`/booking/${bookingId}`);
-        console.log('booking response', res.data.booking);
+        const res = await apiClient.get<{ booking?: any }>(`/booking/${bookingId}`);
+        console.log('booking response', (res.data && (res.data as any).booking) ?? res.data);
         // backend returns { success: true, booking: { ... } }
         // prefer the booking payload but fall back to whole response
-        const jobPayload = res.data?.booking ?? res.data;
+        const jobPayload = res.data?.booking ?? (res.data as any);
         console.log('job payload ->', jobPayload);
         setJob(jobPayload);
       } catch (err) {
@@ -148,24 +214,31 @@ export const EmpBookingScreen = () => {
     };
   }, []);
 
-useEffect(() => {
-  socket.on("toolshop-accepted", (payload) => {
-    console.log("🏪 Pickup details received:", payload);
-    console.debug("toolshop-accepted payload keys:", Object.keys(payload || {}));
+  useEffect(() => {
+    const onToolshopAccepted = (payload: any) => {
+      if (partsCollected) {
+        console.log("⛔ Ignoring toolshop-accepted (already collected)");
+        return;
+      }
 
-    setPickupDetails({
-      requestId: payload.requestId,
-      otp: payload.otp,
-      shop: payload.shop,
-      parts: payload.parts,
-      totalCost: payload.totalCost,
-    });
-  });
+      console.log("🏪 Pickup details received:", payload);
 
-  return () => {
-    socket.off("toolshop-accepted");
-  };
-}, []);
+      setPickupDetails({
+        requestId: payload.requestId,
+        otp: payload.otp,
+        shop: payload.shop,
+        parts: payload.parts,
+        totalCost: payload.totalCost,
+      });
+    };
+
+    socket.on("toolshop-accepted", onToolshopAccepted);
+
+    return () => {
+      socket.off("toolshop-accepted", onToolshopAccepted);
+    };
+  }, [partsCollected]);
+
 
 
 
@@ -212,37 +285,53 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
-    socket.on("toolshop-ready-for-pickup", payload => {
+    const onReadyForPickup = (payload: any) => {
+      // 🔒 HARD GUARD
+      if (partsCollected) {
+        console.log("⛔ Ignoring toolshop-ready-for-pickup (already collected)");
+        return;
+      }
+
       console.log("📣 toolshop-ready-for-pickup payload:", payload);
-      setPickupDetails(payload);
-    });
+
+      setPickupDetails({
+        requestId: payload.requestId,
+        otp: payload.otp,
+        shop: payload.shop,
+        parts: payload.parts,
+        totalCost: payload.totalCost,
+      });
+    };
+
+    socket.on("toolshop-ready-for-pickup", onReadyForPickup);
 
     return () => {
-      socket.off("toolshop-ready-for-pickup");
+      socket.off("toolshop-ready-for-pickup", onReadyForPickup);
+    };
+  }, [partsCollected]);
+
+  useEffect(() => {
+    const onToolOtpVerified = ({ requestId }: any) => {
+      console.log("✅ Tool OTP verified for request:", requestId);
+      setPartsCollected(true);
+      // Hide pickup info
+      setPickupDetails(null);
+
+      // Mark parts collected
+      setPartsFilled(true);
+
+      // Optional: toast / alert
+      Alert.alert("Success", "Parts collected successfully");
+
+      // Now provider continues job
+    };
+
+    socket.on("tool-otp-verified", onToolOtpVerified);
+
+    return () => {
+      socket.off("tool-otp-verified", onToolOtpVerified);
     };
   }, []);
-  useEffect(() => {
-  const onToolOtpVerified = ({ requestId }: any) => {
-    console.log("✅ Tool OTP verified for request:", requestId);
-
-    // Hide pickup info
-    setPickupDetails(null);
-
-    // Mark parts collected
-    setPartsFilled(true);
-
-    // Optional: toast / alert
-    Alert.alert("Success", "Parts collected successfully");
-
-    // Now provider continues job
-  };
-
-  socket.on("tool-otp-verified", onToolOtpVerified);
-
-  return () => {
-    socket.off("tool-otp-verified", onToolOtpVerified);
-  };
-}, []);
 
 
 
@@ -256,9 +345,9 @@ useEffect(() => {
 
   // ✅ When product is collected → reset the parts state
   const handleProductCollected = () => {
-    // setShowShopInfo(false);
-    // setPartsFilled(false);
-    navigation.setParams({ partsbuyed: false } as any);
+    setPartsCollected(true);
+    setPickupDetails(null);
+    setPartsFilled(true);
   };
 
   if (loading) {
@@ -315,7 +404,7 @@ useEffect(() => {
 
                 {/* If pickup details from toolshop arrive before OTP verification, show them here too */}
                 {pickupDetails && (
-                  <View style={[styles.shopContainer, { marginTop: 12 }]}> 
+                  <View style={[styles.shopContainer, { marginTop: 12 }]}>
                     <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>
                     <Text style={styles.shopAddress}>Address: {pickupDetails.shop?.address}</Text>
                     {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
@@ -330,55 +419,41 @@ useEffect(() => {
             )}
 
             {/* ✅ After OTP Verified */}
-            {otpVerified && (
-              <View style={styles.nextPart}>
-                <Text style={styles.successText}>Get started, buddy! </Text>
+            {/* 1️⃣ Parts / Payment Section */}
+            {otpVerified && !pickupDetails && (
+              <View style={{ marginVertical: 8 }}>
+                <Text style={styles.subTitle}>
+                  Continue your job or complete payment
+                </Text>
 
-                {/* 1️⃣ Parts Section */}
-                {!partsFilled && !pickupDetails && (
-                  <View style={{ gap: 16 }}>
-                    <Text style={styles.subTitle}>
-                      Verify your job and add required parts if needed
-                    </Text>
-                    <BottomButton title="Add Parts" onPress={handlePartsPress} widthCount={0.4} />
-                  </View>
-                )}
+                {/* {!partsCollected && (
+                  <BottomButton
+                    title="Add Parts"
+                    onPress={handlePartsPress}
+                    widthCount={0.4}
+                  />
+                )} */}
 
-                {/* 2️⃣ Loader */}
-                {showLoader && <ActivityIndicator size="large" color={theme.colors.primary} />}
+                <BottomButton
+                    title="Add Parts"
+                    onPress={handlePartsPress}
+                    widthCount={0.4}
+                  />
 
-                {/* 3️⃣ Tool Shop Info */}
-                {pickupDetails && (
-                  <View style={styles.shopContainer}>
-                    <Text style={styles.shopName}>Shop: {pickupDetails.shop.name}</Text>
-                    <Text style={styles.shopAddress}>Address: {pickupDetails.shop.address}</Text>
-                    {pickupDetails.parts.map(p => (
-                      <Text>{p.partName} x {p.quantity}</Text>
-                    ))}
-                    <Text style={styles.shopOtp}>Pickup OTP: {pickupDetails.otp}</Text>
-                    <TouchableOpacity style={styles.collectedButton} onPress={handleProductCollected}>
-                      <Text style={styles.collectedText}>Collected</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                <BottomButton
+                  title="Pay & Complete (Cash)"
+                  onPress={handleCashPayment}
+                  widthCount={0.6}
+                />
 
-
-
-                {partRequest?.status === "PENDING" && (
-                  <Text style={{ color: "#d97706", fontWeight: "600" }}>
-                    Waiting for user approval...
-                  </Text>
-                )}
-                {partRequest?.status === "APPROVED_BY_USER" && (
-                  <Text style={{ color: "green", fontWeight: "700" }}>
-                    User approved parts. Waiting for toolshop…
-                  </Text>
-                )}
-
-
-
+                <BottomButton
+                  title="Pay Online & Complete"
+                  onPress={handleRazorpayPayment}
+                  widthCount={0.6}
+                />
               </View>
             )}
+
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -400,12 +475,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 18,
   },
   label: { color: theme.colors.text, ...theme.typography.body },
   nextPart: {
     flex: 1,
-    gap: 16,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,

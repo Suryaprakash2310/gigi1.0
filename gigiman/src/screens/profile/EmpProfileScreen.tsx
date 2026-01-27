@@ -23,6 +23,8 @@ import { ProfileContext } from '@/context/ProfileContext';
 import { AuthContext } from '@/context/AuthContext';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { UserRole } from '@/utils/enums/CommonEnum';
+import { BookingHistoryContext } from "@/context/BookingHistoryContext";
+
 
 type MenuItem = {
   key: string;
@@ -34,11 +36,12 @@ type MenuItem = {
 
 export default function EmployeeProfileScreen({ navigation }: any) {
   //const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  //const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { profile, refreshProfile } = useContext(ProfileContext);
   const { userRole, logout } = useContext(AuthContext);
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const { bookings, loading, refresh } = useContext(BookingHistoryContext);
 
   
 
@@ -70,7 +73,7 @@ export default function EmployeeProfileScreen({ navigation }: any) {
 
   const menu: MenuItem[] = [
     { key: 'jobs', icon: 'briefcase-outline', title: 'Team Management', subtitle: 'Current team', onPress: () => userRole === UserRole.MULTI_EMPLOYEE ? navigation.navigate('team') : navigation.navigate('TeamRequest') },
-    { key: 'today', icon: 'time-outline', title: "Job", subtitle: 'Active job' },
+    { key: 'Bookings', icon: 'time-outline', title: "Booking History", subtitle: 'Recent', onPress: () => navigation.navigate("RecentBookingHistory") },
     { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', subtitle: 'Week / Month' },
     { key: 'tools', icon: 'construct-outline', title: 'Tools Needed', subtitle: 'Manage tools' },
     { key: 'bank', icon: 'card-outline', title: 'Banking', subtitle: 'Payout & account' },
@@ -90,7 +93,7 @@ export default function EmployeeProfileScreen({ navigation }: any) {
   const headerProps = {
     scrollY,
     name: profile.fullname,
-    idText: `ID: ${profile.empId}`,
+    idText: `ID: ${profile.empId || profile.TeamId}`,
     subtitle: profile.role,
     verified: profile.verified === "Yes",
     onEdit: () => navigation.navigate("EditProfile"),

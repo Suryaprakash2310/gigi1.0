@@ -45,7 +45,7 @@ export default function ToolShopProfileScreen({ navigation }: any) {
 
   const menu = [
     { key: 'pending', icon: 'time-outline', title: 'Pending Requests', subtitle: 'New orders' },
-    { key: 'orders', icon: 'list-outline', title: 'Completed Orders' },
+    { key: 'orders', icon: 'list-outline', title: 'Completed Orders', subtitle: 'History', onPress: () => navigation.navigate("RecentBookingHistory"), },
     { key: 'inventory', icon: 'layers-outline', title: 'Inventory & Tools' },
     { key: 'earnings', icon: 'wallet-outline', title: 'Earnings' },
     { key: 'settings', icon: 'settings-outline', title: 'Shop Settings' },
@@ -130,6 +130,8 @@ export default function ToolShopProfileScreen({ navigation }: any) {
                 if (m.key === 'logout') {
                   setSelectedAction('logout');
                   setConfirmVisible(true);
+                } else if (m.onPress) {
+                  m.onPress();
                 } else {
                   Alert.alert(m.title);
                 }

@@ -45,6 +45,7 @@ export const ToolShopDashboard = () => {
         return [{ ...request, requestId: request._id }, ...prev];
       });
     };
+    console.log("----------",incomingRequests);
 
     socket.on("toolshop-booking-request", handler);
     return () => {

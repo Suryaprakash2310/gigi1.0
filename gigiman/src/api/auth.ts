@@ -8,9 +8,15 @@ type VerifyOtpResponse = {
   id?: string;
 };
 
+interface ResponseData {
+  otp: string;
+  // other fields...
+}
+
+
 export const AuthAPI = {
   sendOtp: async (phoneNo: string) => {
-    const res = await apiClient.post('/auth/send-otp', { phoneNo });
+    const res = await apiClient.post<ResponseData>('/auth/send-otp', { phoneNo });
     return res.data;
   },
 
