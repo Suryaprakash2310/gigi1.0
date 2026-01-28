@@ -279,7 +279,7 @@ export const SingleEmpDetail = () => {
 
       const formatted = categories.map((cat: any) => ({
         id: cat._id,
-        title: cat.domainPartsName,
+        title: cat.domainpartname,
         icon: null,
       }));
 

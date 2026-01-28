@@ -2,7 +2,7 @@ import apiClient from "./client";
 
 export interface Category {
   _id: string;
-  domaintoolname: string;
+  domainpartname: string;
 }
 
 export interface CategoriesResponse {

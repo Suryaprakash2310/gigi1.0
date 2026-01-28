@@ -249,7 +249,7 @@ const [submitting, setSubmitting] = useState(false);
                   selectedCategory === item._id && styles.categoryPillTextActive,
                 ]}
               >
-                {item.domainPartsName}
+                {item.domainpartname}
               </Text>
             </TouchableOpacity>
           )}
