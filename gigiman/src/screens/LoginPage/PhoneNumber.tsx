@@ -19,23 +19,27 @@ export default function PhoneNumberScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleGetOtp = async() => {
+  const handleGetOtp = async () => {
     if (phone.length !== 10) {
       setError('Enter a valid 10-digit phone number');
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setError('Phone number must start with 6, 7, 8, or 9');
       return;
     }
     setError('');
     // TODO: connect backend for OTP generation
     try {
       setLoading(true);
-      const res= await AuthAPI.sendOtp(phone.trim());
-      alert('OTP sent successfully::::'+ res.otp);
+      const res = await AuthAPI.sendOtp(phone.trim());
+      alert('OTP sent successfully::::' + res.otp);
       console.log('OTP Response:', res);
-       navigation.navigate('otp', { phone });
-       //navigation.navigate('otp', { phone });
+      navigation.navigate('otp', { phone });
+      //navigation.navigate('otp', { phone });
     } catch (e) {
       alert('Failed to send OTP');
-    }finally {
+    } finally {
       setLoading(false);
     }
     //navigation.navigate('otp', { phone }); // move to next screen
@@ -47,7 +51,7 @@ export default function PhoneNumberScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TouchableWithoutFeedback >
-        <View style={{flex: 1,justifyContent: 'space-between'} }>
+        <View style={{ flex: 1, justifyContent: 'space-between' }}>
 
           {/* Back Arrow */}
           <AppHeader showBack={true} onBackPress={() => navigation.goBack()} />
@@ -81,17 +85,17 @@ export default function PhoneNumberScreen() {
                 />
               </View>
             </View>
-            </View>
+          </View>
 
-            <View style={styles.buttonWrapper}>
-              <CustomButton
-                title={loading ? 'Sending...' : 'Get OTP'}
-                onPress={handleGetOtp}
-                disabled={!phone}
-                widthCount={0.9}
-              />
-            </View>
-          
+          <View style={styles.buttonWrapper}>
+            <CustomButton
+              title={loading ? 'Sending...' : 'Get OTP'}
+              onPress={handleGetOtp}
+              disabled={!phone}
+              widthCount={0.9}
+            />
+          </View>
+
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -158,7 +162,7 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     //flex:1,
-    justifyContent: 'flex-end', 
+    justifyContent: 'flex-end',
     alignItems: 'center',
     // position: 'absolute',
     // bottom: height * 0.08,

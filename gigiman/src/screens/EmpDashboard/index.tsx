@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '../../components/AppHeader';
 import { WorkingModeToggle } from './WorkingModeToggle';
 import { ClientRequestCard } from './ClientRequestCard';
@@ -30,6 +31,7 @@ const { width } = Dimensions.get('window');
 
 export const EmpDashboard = () => {
   const navigation = useNavigation<TabNavProp>();
+  const insets = useSafeAreaInsets();
 
   const [workingMode, setWorkingMode] = useState(false);
   const [clientRequests, setClientRequests] = useState<any[]>([]);
@@ -103,21 +105,21 @@ export const EmpDashboard = () => {
   };
 
   useEffect(() => {
-  const onLeaderOtpReady = ({ bookingId }: any) => {
-    console.log("🟢 LEADER OTP READY:", bookingId);
+    const onLeaderOtpReady = ({ bookingId }: any) => {
+      console.log("🟢 LEADER OTP READY:", bookingId);
 
-    navigation.navigate("BookingStack", {
-      screen: "Booking",
-      params: { bookingId }
-    });
-  };
+      navigation.navigate("BookingStack", {
+        screen: "Booking",
+        params: { bookingId }
+      });
+    };
 
-  socket.on("leader-otp-ready", onLeaderOtpReady);
+    socket.on("leader-otp-ready", onLeaderOtpReady);
 
-  return () => {
-    socket.off("leader-otp-ready", onLeaderOtpReady);
-  };
-}, []);
+    return () => {
+      socket.off("leader-otp-ready", onLeaderOtpReady);
+    };
+  }, []);
 
 
 
@@ -195,7 +197,7 @@ export const EmpDashboard = () => {
   }, [workingMode]);
 
   useEffect(() => {
-    if ( userRole !== UserRole.MULTI_EMPLOYEE) return;
+    if (userRole !== UserRole.MULTI_EMPLOYEE) return;
 
     const handleTeamBookingRequest = (payload: any) => {
       console.log("🔥 TEAM BOOKING RECEIVED IN DASHBOARD:", payload);
@@ -224,25 +226,25 @@ export const EmpDashboard = () => {
     return () => {
       socket.off("team-booking-request", handleTeamBookingRequest);
     };
-  }, [ userRole]);
+  }, [userRole]);
 
   useEffect(() => {
-  const onTeamMemberAssigned = (booking: any) => {
-    console.log("👥 TEAM MEMBER ASSIGNED:", booking);
+    const onTeamMemberAssigned = (booking: any) => {
+      console.log("👥 TEAM MEMBER ASSIGNED:", booking);
 
-    // EVERY MEMBER navigates to booking screen
-    navigation.navigate("BookingStack", {
-      screen: "Booking",
-      params: { bookingId: booking._id },
-    });
-  };
+      // EVERY MEMBER navigates to booking screen
+      navigation.navigate("BookingStack", {
+        screen: "Booking",
+        params: { bookingId: booking._id },
+      });
+    };
 
-  socket.on("team-member-assigned", onTeamMemberAssigned);
+    socket.on("team-member-assigned", onTeamMemberAssigned);
 
-  return () => {
-    socket.off("team-member-assigned", onTeamMemberAssigned);
-  };
-}, []);
+    return () => {
+      socket.off("team-member-assigned", onTeamMemberAssigned);
+    };
+  }, []);
 
 
   //   useEffect(() => {
@@ -311,28 +313,28 @@ export const EmpDashboard = () => {
   // };
 
   const handleAccept = (job: any) => {
-  if (!employeeId) return;
+    if (!employeeId) return;
 
-  if (isTeam) {
-    // 🔥 ONLY OPEN MODAL
-    setSelectedJob(job);
-    setAssignModalVisible(true);
-    return;
-  }
+    if (isTeam) {
+      // 🔥 ONLY OPEN MODAL
+      setSelectedJob(job);
+      setAssignModalVisible(true);
+      return;
+    }
 
-  // 🔹 SINGLE EMPLOYEE FLOW
-  socket.emit("servicer-accept", {
-    bookingId: job.id,
-    employeeId,
-  });
+    // 🔹 SINGLE EMPLOYEE FLOW
+    socket.emit("servicer-accept", {
+      bookingId: job.id,
+      employeeId,
+    });
 
-  setClientRequests(prev => prev.filter(j => j.id !== job.id));
+    setClientRequests(prev => prev.filter(j => j.id !== job.id));
 
-  navigation.navigate("BookingStack", {
-    screen: "Booking",
-    params: { bookingId: job.id },
-  });
-};
+    navigation.navigate("BookingStack", {
+      screen: "Booking",
+      params: { bookingId: job.id },
+    });
+  };
 
 
   const handleReject = (jobId: string) => {
@@ -372,7 +374,7 @@ export const EmpDashboard = () => {
   //   };
   // }, [workingMode, userRole]);
 
-  
+
 
 
 
@@ -453,27 +455,27 @@ export const EmpDashboard = () => {
               teamMembers={item.teamMembers}
               onReject={() => handleReject(item.id)}
               onAccept={() => handleAccept(item)}
-              // onTeamAccept={({ leaderEmpId, helperEmpIds }) => {
-              //   // FINAL TEAM ASSIGN
-              //   apiClient.post("/booking/team/assign", {
-              //     bookingId: item.id,
-              //     primaryEmployee: leaderEmpId,
-              //     helpers: helperEmpIds,
-              //   }).then(() => {
-              //     setClientRequests(prev =>
-              //       prev.filter(j => j.id !== item.id)
-              //     );
+            // onTeamAccept={({ leaderEmpId, helperEmpIds }) => {
+            //   // FINAL TEAM ASSIGN
+            //   apiClient.post("/booking/team/assign", {
+            //     bookingId: item.id,
+            //     primaryEmployee: leaderEmpId,
+            //     helpers: helperEmpIds,
+            //   }).then(() => {
+            //     setClientRequests(prev =>
+            //       prev.filter(j => j.id !== item.id)
+            //     );
 
-              //     navigation.navigate("BookingStack", {
-              //       screen: "Booking",
-              //       params: { bookingId: item.id },
-              //     });
-              //   });
-              // }}
+            //     navigation.navigate("BookingStack", {
+            //       screen: "Booking",
+            //       params: { bookingId: item.id },
+            //     });
+            //   });
+            // }}
             />
 
           )}
-          contentContainerStyle={styles.scrollArea}
+          contentContainerStyle={[styles.scrollArea, { paddingBottom: 80 + insets.bottom }]}
         />
       )}
       {/* 🔹 TEAM ASSIGN MODAL */}

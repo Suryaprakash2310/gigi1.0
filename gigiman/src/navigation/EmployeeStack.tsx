@@ -1,8 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 //import { HomeScreen } from '../screens/HomeScreen';
-import {EmpBookingScreen} from '../screens/EmpBooking/index';
+import { EmpBookingScreen } from '../screens/EmpBooking/index';
 //import ToolShopScreen from '../screens/ToolShopScreen';
 import { EmpDashboard } from '../screens/EmpDashboard';
 import { theme } from '../theme/theme'; // optional if you have a theme file
@@ -20,25 +22,26 @@ export type AppStackParamList = {
     params?: BookingStackParamList[keyof BookingStackParamList];
   };
   Pocket: undefined;
-   Profile: undefined;
+  Profile: undefined;
 };
 
 const Tab = createBottomTabNavigator<AppStackParamList>();
 
 export default function AppStack() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator id={undefined}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: theme?.colors?.primary ,
+        tabBarActiveTintColor: theme?.colors?.primary,
         tabBarInactiveTintColor: '#999',
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 0.8,
           elevation: 5,
-          height: 60,
-          paddingBottom: 5,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom ? insets.bottom : 10,
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap | undefined;
@@ -49,7 +52,7 @@ export default function AppStack() {
           } else if (route.name === 'BookingStack') {
             iconName = focused ? 'calendar' : 'calendar-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
-          } 
+          }
           else if (route.name === 'Pocket') {
             return (
               <MaterialIcons
@@ -58,7 +61,7 @@ export default function AppStack() {
                 color={color}
               />
             );
-          } 
+          }
           else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
             return <Ionicons name={iconName} size={size} color={color} />;

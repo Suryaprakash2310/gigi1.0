@@ -5,6 +5,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  View,
 } from "react-native";
 
 import { Screen } from "../../components/ui/Screen";
@@ -13,7 +14,9 @@ import { TeamAPI } from "@/api/team";
 import { AppText } from "@/components/ui/Text";
 import { useTeam } from "../../hooks/useTeam";
 import debounce from "lodash.debounce";
-import { get } from "axios";
+import { theme } from "@/theme/theme";
+import { Ionicons } from "@expo/vector-icons";
+
 import AppHeader from "@/components/AppHeader";
 import { useNavigation } from "@react-navigation/native";
 import { EmpProfileStackParamList } from "@/navigation/EmpProfileStack";
@@ -89,54 +92,128 @@ export const AddEmployeeScreen: React.FC = () => {
     return "addable";
   };
   return (
-    <>
-    <AppHeader showBack={true} onBackPress={() => navigation.goBack()} />
-    <Screen>   
-      <AppText variant="titleLarge" style={styles.title}>
-        Add Employee
-      </AppText>
-
-      <TextInput
-        style={styles.search}
-        placeholder="Search by name or Emp ID"
-        value={query}
-        onChangeText={onChangeQuery}
+    <View style={styles.container}>
+      <AppHeader
+        title="Add Employee"
+        showBack={true}
+        onBackPress={() => navigation.goBack()}
+        subtitle="Search and add members to your team"
       />
 
-      {loading || isSubmitting ? (
-        <ActivityIndicator size="large" style={{ marginTop: 20 }} />
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {results.map((emp: any) => (
-            <EmployeeSearchCard
-              key={emp.empId}
-              empId={emp.empId}
-              fullname={emp.fullname}
-              status={getStatus(emp.empId, emp.teamAccepted)}
-              onAdd={() => handleAdd(emp.empId)}
-            />
+      <View style={styles.content}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or Emp ID"
+            placeholderTextColor="#999"
+            value={query}
+            onChangeText={onChangeQuery}
+          />
+        </View>
 
-          ))}
+        {loading || isSubmitting ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+          >
+            {results.map((emp: any) => (
+              <View key={emp.empId} style={styles.cardWrapper}>
+                <EmployeeSearchCard
+                  empId={emp.empId}
+                  fullname={emp.fullname}
+                  status={getStatus(emp.empId, emp.teamAccepted)}
+                  onAdd={() => handleAdd(emp.empId)}
+                />
+              </View>
+            ))}
 
-          {query && results.length === 0 && (
-            <AppText style={{ opacity: 0.6, textAlign: "center", marginTop: 30 }}>
-              No employee found
-            </AppText>
-          )}
-        </ScrollView>
-      )}
-    </Screen>
-    </>
+            {query && results.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={48} color="#ccc" />
+                <AppText style={styles.emptyText}>No employee found</AppText>
+                <AppText style={styles.emptySubText}>Try searching with a different name or ID</AppText>
+              </View>
+            )}
+
+            {!query && results.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={48} color="#ccc" />
+                <AppText style={styles.emptyText}>Search for employees</AppText>
+                <AppText style={styles.emptySubText}>Type above to find people to add</AppText>
+              </View>
+            )}
+
+          </ScrollView>
+        )}
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  title: { marginBottom: 20, fontWeight: "700" },
-  search: {
-    backgroundColor: "#f1f1f1",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 20,
-    fontSize: 16,
+  container: {
+    flex: 1,
+    backgroundColor: "#f8f9fa",
   },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  loadingContainer: {
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#333",
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  cardWrapper: {
+    marginBottom: 12,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 60,
+    opacity: 0.8,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#888",
+    marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: "#aaa",
+    marginTop: 4,
+    textAlign: 'center',
+  }
 });

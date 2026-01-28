@@ -61,7 +61,7 @@ export default function AppHeader({
         {showBack ? (
           <TouchableOpacity onPress={onBackPress} style={styles.iconButton}>
             <Ionicons
-              name={ 'chevron-back' }
+              name={'chevron-back'}
               size={24}
               color={theme.colors.text}
             />
@@ -109,12 +109,12 @@ const styles = StyleSheet.create({
   title: {
     color: theme.colors.text,
     ...theme.typography.h2,
-    
+
     textAlign: 'center',
   },
   subtitle: {
-   color: theme.colors.text,
-   ...theme.typography.h1,
+    color: theme.colors.text,
+    ...theme.typography.body,
     textAlign: 'left',
   },
 });

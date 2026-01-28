@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView, ActivityIndicator, Button } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import FloatingLabelInput from '../../components/TextInput';
 import AppHeader from '../../components/AppHeader';
 import CustomButton from '../../components/Bottom';
@@ -303,7 +304,7 @@ export const SingleEmpDetail = () => {
   // ==================== VALIDATIONS ====================
   const validateName = (name: string): string => {
     if (!name.trim()) return 'Name is required';
-    if (name.length < 2) return 'Name must be at least 2 characters';
+    if (name.length < 3) return 'Name must be at least 3 characters';
     if (!/^[a-zA-Z\s]+$/.test(name)) return 'Only letters and spaces allowed';
     return '';
   };
@@ -312,19 +313,19 @@ export const SingleEmpDetail = () => {
     const num = parseInt(age, 10);
     if (!age.trim()) return 'Age is required';
     if (isNaN(num)) return 'Age must be a number';
-    if (num < 18 || num > 100) return 'Age must be between 18 and 100';
+    if (num < 18 || num > 60) return 'Age must be between 18 and 60';
     return '';
   };
 
   const validateAddress = (address: string): string => {
     if (!address.trim()) return 'Address is required';
-    if (address.length < 5) return 'Address must be at least 5 characters';
+    if (address.length < 10 || address.length > 100) return 'Address must be between 10 and 100 characters';
     return '';
   };
 
   const validatePhone = (phone: string): string => {
     if (!phone.trim()) return 'Phone number is required';
-    if (!/^\d{10}$/.test(phone)) return 'Phone must be 10 digits';
+    if (!/^[6-9]\d{9}$/.test(phone)) return 'Phone must be 10 digits and start with 6, 7, 8, or 9';
     return '';
   };
 
@@ -456,11 +457,31 @@ export const SingleEmpDetail = () => {
               keyboardType="phone-pad"
               error={errors.phone}
             />
-            <Button
-              title={locLoading ? "Detecting location..." : "Use Current Location"}
+            <TouchableOpacity
+              style={[
+                styles.locationButton,
+                coords ? styles.locationButtonSuccess : {},
+                locLoading ? styles.locationButtonLoading : {}
+              ]}
               onPress={detectLocation}
               disabled={locLoading}
-            />
+              activeOpacity={0.7}
+            >
+              {locLoading ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginRight: 8 }} />
+              ) : coords ? (
+                <Ionicons name="checkmark-circle" size={20} color="green" style={{ marginRight: 8 }} />
+              ) : (
+                <Ionicons name="location-sharp" size={20} color={theme.colors.primary} style={{ marginRight: 8 }} />
+              )}
+
+              <Text style={[
+                styles.locationButtonText,
+                coords ? { color: 'green' } : { color: theme.colors.primary }
+              ]}>
+                {locLoading ? "Detecting..." : coords ? "Location Captured" : "Use Current Location"}
+              </Text>
+            </TouchableOpacity>
 
             {coords && (
               <Text style={{ marginTop: 8, color: "textMuted" }}>
@@ -691,5 +712,31 @@ const styles = StyleSheet.create({
   },
   chipText: { marginRight: 8, color: '#222', fontSize: 14 },
   chipRemove: { color: '#c62828', fontSize: 14 },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.primary, // or a neutral border if preferred initially
+    backgroundColor: '#fff', // or a light tint
+    marginTop: 10,
+    borderStyle: 'dashed', // optional aesthetics
+  },
+  locationButtonSuccess: {
+    borderColor: 'green',
+    backgroundColor: '#f0fdf4', // light green bg
+    borderStyle: 'solid',
+  },
+  locationButtonLoading: {
+    opacity: 0.7,
+  },
+  locationButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
 });
 
