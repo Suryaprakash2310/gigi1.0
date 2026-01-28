@@ -420,7 +420,7 @@ export const EmpBookingScreen = () => {
 
             {/* ✅ After OTP Verified */}
             {/* 1️⃣ Parts / Payment Section */}
-            {otpVerified && !pickupDetails && (
+            {otpVerified  && (
               <View style={{ marginVertical: 8 }}>
                 <Text style={styles.subTitle}>
                   Continue your job or complete payment
@@ -453,6 +453,16 @@ export const EmpBookingScreen = () => {
                 />
               </View>
             )}
+            {pickupDetails && (
+                  <View style={[styles.shopContainer, { marginTop: 12 }]}>
+                    <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>
+                    <Text style={styles.shopAddress}>Address: {pickupDetails.shop?.address}</Text>
+                    {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
+                      <Text key={i}>{p.partName || p.partsname || p.partsname} x {p.quantity}</Text>
+                    ))}
+                    <Text style={styles.shopOtp}>Pickup OTP: {pickupDetails.otp}</Text>
+                  </View>
+                )}
 
           </ScrollView>
         </TouchableWithoutFeedback>
