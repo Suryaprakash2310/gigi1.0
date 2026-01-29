@@ -208,8 +208,8 @@ export const EmpDashboard = () => {
         return [
           {
             id: payload.bookingId,
-            name: payload.user.name,
-            work: payload.servivce,
+            name: "mock name",
+            work: payload.service,
             address: payload.address,
             employeeCount: payload.employeeCount,
             isTeam: true,
@@ -399,7 +399,7 @@ export const EmpDashboard = () => {
               ? 'Good Afternoon'
               : 'Good Evening'}
         </Text>
-        <Text style={styles.subGreeting}>Surya ..</Text>
+        <Text style={styles.subGreeting}>Gigiman Service Providers ..</Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
