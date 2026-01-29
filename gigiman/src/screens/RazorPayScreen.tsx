@@ -6,16 +6,17 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { paymentSuccessApi } from "@/api/payment.api";
 import { injectRazorpayData } from "@/utils/razorpayInjector";
 import { razorpayHTML } from "@/utils/razorpayTemplate";
+import { RAZORPAY_KEY_ID } from "@/utils/constant/razorzay.constant";
 
 export default function RazorpayScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
   const { bookingId, amount, orderId } = route.params;
-  
+
   const html = injectRazorpayData(
     razorpayHTML,
-    process.env.RAZORPAY_KEY_ID!,
+    RAZORPAY_KEY_ID,
     amount,
     orderId
   );
@@ -51,6 +52,8 @@ export default function RazorpayScreen() {
     <WebView
       originWhitelist={["*"]}
       source={{ html }}
+      javaScriptEnabled
+      domStorageEnabled
       onMessage={onMessage}
       startInLoadingState
       renderLoading={() => (
@@ -59,5 +62,6 @@ export default function RazorpayScreen() {
         </View>
       )}
     />
+
   );
 }
