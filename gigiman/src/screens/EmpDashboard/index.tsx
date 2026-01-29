@@ -164,18 +164,18 @@ export const EmpDashboard = () => {
   useEffect(() => {
     if (!workingMode) return;
 
-    socket.on("new-booking-request", ({ bookingId }) => {
-      console.log("📥 New booking request:", bookingId);
+    socket.on("new-booking-request", ({ payload }) => {
+      console.log("📥 New booking request:", payload);
 
       setClientRequests(prev => {
-        if (prev.some(r => r.id === bookingId)) return prev;
+        if (prev.some(r => r.id === payload.bookingId)) return prev;
         return [
           {
-            id: bookingId,
-            name: "Client",
-            work: "Service Request",
-            cost: "Pending",
-            address: "Nearby location",
+            id: payload.bookingId,
+            name: payload.user.name,
+            work: payload.service,
+            cost: payload.totalPrice,
+            address: payload.address,
           },
           ...prev,
         ];
@@ -208,9 +208,9 @@ export const EmpDashboard = () => {
         return [
           {
             id: payload.bookingId,
-            name: "Client",
-            work: payload.serviceCategory,
-            address: "Nearby location",
+            name: payload.user.name,
+            work: payload.servivce,
+            address: payload.address,
             employeeCount: payload.employeeCount,
             isTeam: true,
             teamMembers: payload.teamMembers,
