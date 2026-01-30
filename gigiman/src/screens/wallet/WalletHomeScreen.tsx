@@ -1,5 +1,14 @@
 import React from "react";
-import { StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import {
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  View,
+  ActivityIndicator,
+} from "react-native";
+import AppHeader from "@/components/AppHeader";
+import { theme } from "@/theme/theme";
+
 import { Screen } from "@/components/ui/Screen";
 import { AppText } from "@/components/ui/Text";
 import { useNavigation } from "@react-navigation/native";
@@ -14,63 +23,68 @@ export const WalletHomeScreen: React.FC = () => {
     loadingBalance,
     transactions,
     loadingTx,
-    refreshBalance,
-    refreshTransactions,
   } = useWallet();
 
   return (
     <Screen>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.container}
       >
-        <AppText variant="titleLarge" style={styles.title}>
-          Wallet
-        </AppText>
+        <AppHeader title="Wallet" />
 
-        <WalletBalanceCard balance={balance} loading={loadingBalance} />
+        {/* Balance Card */}
+        <WalletBalanceCard
+          balance={balance}
+          loading={loadingBalance}
+        />
 
         {/* Actions */}
-        <ScrollView
-          horizontal
-          style={{ marginTop: 16 }}
-          showsHorizontalScrollIndicator={false}
-        >
+        <View style={styles.actions}>
           <TouchableOpacity
-            style={styles.actionBtn}
+            style={styles.primaryBtn}
             onPress={() => navigation.navigate("AddMoneyScreen")}
           >
-            <AppText style={styles.actionText}>Add Money</AppText>
+            <AppText style={styles.primaryText}>Add Money</AppText>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionBtn, styles.outlineBtn]}
+            style={styles.secondaryBtn}
             onPress={() => navigation.navigate("WithdrawMoneyScreen")}
           >
-            <AppText style={[styles.actionText, styles.outlineText]}>
-              Withdraw
-            </AppText>
+            <AppText style={styles.secondaryText}>Withdraw</AppText>
           </TouchableOpacity>
+        </View>
+
+        {/* Transactions header */}
+        <View style={styles.txHeader}>
+          <AppText variant="titleMedium" style={styles.sectionTitle}>
+            Recent Transactions
+          </AppText>
 
           <TouchableOpacity
-            style={[styles.actionBtn, styles.outlineBtn]}
-            onPress={() => navigation.navigate("TransactionHistoryScreen")}
+            onPress={() =>
+              navigation.navigate("TransactionHistoryScreen")
+            }
           >
-            <AppText style={[styles.actionText, styles.outlineText]}>
-              View All
-            </AppText>
+            <AppText style={styles.viewAll}>View all</AppText>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
 
-        {/* Recent Transactions */}
-        <AppText variant="titleMedium" style={styles.sectionTitle}>
-          Recent Transactions
-        </AppText>
-
+        {/* Transactions list */}
         {loadingTx ? (
-          <AppText style={{ opacity: 0.6 }}>Loading...</AppText>
+          <View style={styles.loader}>
+            <ActivityIndicator />
+          </View>
         ) : transactions.length === 0 ? (
-          <AppText style={{ opacity: 0.6 }}>No transactions yet</AppText>
+          <View style={styles.empty}>
+            <AppText style={styles.emptyText}>
+              No transactions yet
+            </AppText>
+            <AppText style={styles.emptySub}>
+              Your wallet activity will appear here
+            </AppText>
+          </View>
         ) : (
           transactions.slice(0, 5).map((tx) => (
             <WalletTransactionItem key={tx._id} tx={tx} />
@@ -82,31 +96,69 @@ export const WalletHomeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    paddingBottom: 40,
+  },
   title: {
     marginBottom: 16,
     fontWeight: "700",
   },
-  sectionTitle: {
+  actions: {
+    flexDirection: "row",
     marginTop: 20,
-    marginBottom: 8,
-    fontWeight: "600",
+    marginBottom: 28,
   },
-  actionBtn: {
-    backgroundColor: "#0D47A1",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
+  primaryBtn: {
+    flex: 1,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
     marginRight: 10,
+    alignItems: "center",
   },
-  actionText: {
-    color: "#fff",
+  primaryText: {
+    color: theme.colors.background,
     fontWeight: "600",
-    fontSize: 14,
   },
-  outlineBtn: {
-    backgroundColor: "#E3F2FD",
+  secondaryBtn: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
   },
-  outlineText: {
-    color: "#0D47A1",
+  secondaryText: {
+    color: theme.colors.primary,
+    fontWeight: "600",
+  },
+  txHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontWeight: "600",
+  },
+  viewAll: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  loader: {
+    paddingVertical: 20,
+  },
+  empty: {
+    paddingVertical: 30,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontWeight: "600",
+    opacity: 0.7,
+  },
+  emptySub: {
+    fontSize: 12,
+    opacity: 0.5,
+    marginTop: 4,
   },
 });

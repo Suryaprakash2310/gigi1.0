@@ -9,6 +9,7 @@ import { ToolShopDashboard } from "../screens/ShopDashboard";
 import { ToolShopBooking } from "../screens/ShopBooking";
 import ToolShopProfileScreen from "../screens/profile/ShopProfileScreen";
 import ToolShopProfileStack from "./ToolShopProfileStack";
+import PocketStack from "./PocketStack";
 // import TeamDashboardScreen from "@/screens/team/TeamDashboardScreen";
 // import TeamMembersScreen from "@/screens/team/TeamEmployeeScreen";
 
@@ -16,6 +17,7 @@ export type ToolShopStackParamList = {
   Dashboard: undefined;
   Booking: { initialTab?: string; requestId?: string };
   profileTab: undefined;
+  Pocket: undefined;
 };
 
 const Tab = createBottomTabNavigator<ToolShopStackParamList>();
@@ -25,7 +27,7 @@ export default function ToolShopTabNavigator() {
 
   return (
     <Tab.Navigator
-    id={undefined}
+      id={undefined}
       screenOptions={({ route }) => ({
         headerShown: false,
 
@@ -53,7 +55,10 @@ export default function ToolShopTabNavigator() {
             iconName = focused ? "speedometer" : "speedometer-outline";
           } else if (route.name === "Booking") {
             iconName = focused ? "document-text" : "document-text-outline";
-          } else {
+          } else if (route.name === "Pocket") {
+            iconName = focused ? "wallet" : "wallet-outline";
+          }
+          else {
             iconName = focused ? "person-circle" : "person-circle-outline";
           }
 
@@ -65,7 +70,8 @@ export default function ToolShopTabNavigator() {
     >
       {/* <Tab.Screen name="Dashboard" component={TeamMembersScreen} /> */}
       <Tab.Screen name="Dashboard" component={ToolShopDashboard} />
-      <Tab.Screen name="Booking" component={ToolShopBooking} />
+      {/* <Tab.Screen name="Booking" component={ToolShopBooking} /> */}
+      <Tab.Screen name="Pocket" component={PocketStack} />
       <Tab.Screen name="profileTab" component={ToolShopProfileStack} />
     </Tab.Navigator>
   );

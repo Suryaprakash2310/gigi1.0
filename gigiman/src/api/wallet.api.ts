@@ -19,16 +19,32 @@ export interface WithdrawResponse {
   message: string;
   newBalance: number;
 }
+export type TransactionType =
+  | "CREDIT"
+  | "DEBIT"
+  | "HOLD"
+  | "RELEASE"
+  | "REFUND"
+  | "PENALTY"
+  | "COMMISSION";
 
-export type TransactionType = "ADD" | "WITHDRAW" | string;
+export type TransactionStatus =
+  | "PENDING"
+  | "SUCCESS"
+  | "FAILED";
 
 export interface TransactionItem {
+  transactionStatus: string;
+  transactionType: string;
   _id: string;
   amount: number;
-  transactionType: TransactionType;
-  transactionStatus: string;
+  type: TransactionType;
+  status: TransactionStatus;
+  referenceId?: string;
+  description?: string;
   createdAt: string;
 }
+
 
 export const WalletAPI = {
   getBalance: async (): Promise<WalletBalanceResponse> => {

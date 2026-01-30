@@ -6,6 +6,7 @@ import './src/i18n';
 import { BottomSheetProvider } from './src/context/BottomSheetContext';
 import { ProfileProvider } from '@/context/ProfileContext';
 import { BookingHistoryProvider } from '@/context/BookingHistoryContext';
+import { WalletProvider } from '@/context/WalletContext';
 
 export default function App() {
   return (
@@ -13,9 +14,11 @@ export default function App() {
       <AuthProvider>
         <ProfileProvider>
           <BookingHistoryProvider>
-            <BottomSheetProvider>
-              <RootNavigator />
-            </BottomSheetProvider>
+            <WalletProvider>
+              <BottomSheetProvider>
+                <RootNavigator />
+              </BottomSheetProvider>
+            </WalletProvider>
           </BookingHistoryProvider>
         </ProfileProvider>
       </AuthProvider>

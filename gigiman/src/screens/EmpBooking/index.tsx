@@ -86,19 +86,19 @@ export const EmpBookingScreen = () => {
       // };
 
 
-      await paymentSuccessApi({
-        bookingId: bookingId,
-        paymentMethod: "RAZORPAY",
-        // razorpayOrderId: paymentData.razorpay_order_id,
-        // razorpayPaymentId: paymentData.razorpay_payment_id,
-        // razorpaySignature: paymentData.razorpay_signature,
-      });
+      // await paymentSuccessApi({
+      //   bookingId: bookingId,
+      //   paymentMethod: "RAZORPAY",
+      //   // razorpayOrderId: paymentData.razorpay_order_id,
+      //   // razorpayPaymentId: paymentData.razorpay_payment_id,
+      //   // razorpaySignature: paymentData.razorpay_signature,
+      // });
 
-      Alert.alert("Success", "Payment completed");
+      //Alert.alert("Success", "Payment completed");
 
       navigation.navigate("Razorpay", {
         bookingId: bookingId,
-        amount: job.totalPrice,
+        amount: job.totalPrice* 100,
         orderId: job.razorpayOrderId, // backend should already have it
       });
 

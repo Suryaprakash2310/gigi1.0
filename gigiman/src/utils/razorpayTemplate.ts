@@ -1,15 +1,10 @@
 export const razorpayHTML = `
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
   <body>
-    <button id="payBtn" style="
-      margin-top:40%;
-      width:80%;
-      height:50px;
-      font-size:18px;
-    ">
+    <button id="payBtn" style="margin-top:40%;height:50px;width:80%;font-size:18px;">
       Pay Now
     </button>
 
@@ -21,9 +16,15 @@ export const razorpayHTML = `
           key: "__KEY__",
           amount: "__AMOUNT__",
           currency: "INR",
-          name: "Gigiman Wallet",
-          description: "Add money to wallet",
+          name: "Gigiman",
+          description: "Booking Payment",
           order_id: "__ORDER_ID__",
+
+          prefill: {
+            name: "Gigiman User",
+            email: "user@gigiman.in",
+            contact: "9999999999"
+          },
 
           handler: function (response) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -43,8 +44,8 @@ export const razorpayHTML = `
           }
         };
 
-        var rzp1 = new Razorpay(options);
-        rzp1.open();
+        var rzp = new Razorpay(options);
+        rzp.open();
       };
     </script>
   </body>

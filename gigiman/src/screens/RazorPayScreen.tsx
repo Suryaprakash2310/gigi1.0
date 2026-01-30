@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, ActivityIndicator, Alert } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -13,6 +13,13 @@ export default function RazorpayScreen() {
   const route = useRoute<any>();
 
   const { bookingId, amount, orderId } = route.params;
+  console.log("🧪 Razorpay inputs:", {
+  RAZORPAY_KEY_ID,
+  bookingId,
+  amount,
+  orderId,
+});
+
 
   const html = injectRazorpayData(
     razorpayHTML,
@@ -20,33 +27,31 @@ export default function RazorpayScreen() {
     amount,
     orderId
   );
+  useEffect(() => {
+    console.log("Razorpay HTML:", html);
+  }, []);
 
   const onMessage = async (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
+  const data = JSON.parse(event.nativeEvent.data);
 
-      if (!data.success) {
-        Alert.alert("Payment Cancelled");
-        navigation.goBack();
-        return;
-      }
+  if (!data.success) {
+    Alert.alert("Payment Cancelled");
+    navigation.goBack();
+    return;
+  }
 
-      await paymentSuccessApi({
-        bookingId,
-        paymentMethod: "RAZORPAY",
-        razorpayOrderId: data.razorpay_order_id,
-        razorpayPaymentId: data.razorpay_payment_id,
-        razorpaySignature: data.razorpay_signature,
-      });
+  await paymentSuccessApi({
+    bookingId,
+    paymentMethod: "RAZORPAY",
+    razorpayOrderId: data.razorpay_order_id,
+    razorpayPaymentId: data.razorpay_payment_id,
+    razorpaySignature: data.razorpay_signature,
+  });
 
-      Alert.alert("Success", "Payment completed");
-      navigation.replace("BookingCompleted", { bookingId });
+  Alert.alert("Success", "Payment completed");
+  navigation.replace("BookingCompleted", { bookingId });
+};
 
-    } catch (err) {
-      Alert.alert("Payment Failed");
-      navigation.goBack();
-    }
-  };
 
   return (
     <WebView
