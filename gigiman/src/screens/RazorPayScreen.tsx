@@ -6,7 +6,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { paymentSuccessApi } from "@/api/payment.api";
 import { injectRazorpayData } from "@/utils/razorpayInjector";
 import { razorpayHTML } from "@/utils/razorpayTemplate";
-import { RAZORPAY_KEY_ID } from "@/utils/constant/razorzay.constant";
+import { RZ_KEY_ID } from "@/utils/constant/razorzay.constant";
+import Constants from "expo-constants";
 
 export default function RazorpayScreen() {
   const navigation = useNavigation<any>();
@@ -14,7 +15,7 @@ export default function RazorpayScreen() {
 
   const { bookingId, amount, orderId } = route.params;
   console.log("🧪 Razorpay inputs:", {
-  RAZORPAY_KEY_ID,
+  RZ_KEY_ID,
   bookingId,
   amount,
   orderId,
@@ -23,12 +24,14 @@ export default function RazorpayScreen() {
 
   const html = injectRazorpayData(
     razorpayHTML,
-    RAZORPAY_KEY_ID,
+    RZ_KEY_ID,
     amount,
     orderId
   );
   useEffect(() => {
     console.log("Razorpay HTML:", html);
+    console.log("🔍 FULL CONSTANTS:", Constants);
+console.log("🔍 expoConfig.extra:", Constants.expoConfig?.extra);
   }, []);
 
   const onMessage = async (event: any) => {

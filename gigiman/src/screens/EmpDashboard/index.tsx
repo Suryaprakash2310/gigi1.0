@@ -165,7 +165,7 @@ export const EmpDashboard = () => {
     if (!workingMode) return;
 
     socket.on("new-booking-request", ({ payload }) => {
-      console.log("📥 New booking request:", payload);
+      console.log("📥 New booking request+++:", payload);
 
       setClientRequests(prev => {
         if (prev.some(r => r.id === payload.bookingId)) return prev;

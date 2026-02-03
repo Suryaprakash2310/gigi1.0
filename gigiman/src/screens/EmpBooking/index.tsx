@@ -24,9 +24,9 @@ import { BookingStackParamList } from '../../navigation/EmpBookingStack';
 import { AppStackParamList } from '../../navigation/EmployeeStack';
 import { socket } from '@/socket/socket';
 import apiClient from '@/api/client';
-import { paymentSuccessApi } from '@/api/payment.api';
+import { createOrder, paymentSuccessApi } from '@/api/payment.api';
 import { AuthContext } from '@/context/AuthContext';
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
+//const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
 
 const { width } = Dimensions.get('window');
 
@@ -54,15 +54,16 @@ export const EmpBookingScreen = () => {
       });
 
       Alert.alert("Success", "Payment completed");
-      navigation.navigate("Razorpay", {
-        bookingId: bookingId,
-        amount: job.totalPrice,
-        orderId: job.razorpayOrderId, // backend should already have it
-      });
+      // navigation.replace("Razorpay", {
+      //   bookingId: bookingId,
+      //   amount: job.totalPrice,
+      //   orderId: job.razorpayOrderId, // backend should already have it
+      // });
 
       //   navigation.navigate("BookingCompleted", {
       //   bookingId: job._id,
       // });
+      navigation.replace("BookingCompleted");
 
     } catch (err: any) {
       Alert.alert(
@@ -73,6 +74,13 @@ export const EmpBookingScreen = () => {
   };
   const handleRazorpayPayment = async () => {
     try {
+
+      const res = await createOrder(bookingId!, Number(job.totalPrice));
+      console.log("🧾 Order created:", res.data);
+      const  orderId  = res.data.orderId;
+
+      
+
       // const options = {
       //   description: "Gigiman Service Payment",
       //   currency: "INR",
@@ -96,10 +104,10 @@ export const EmpBookingScreen = () => {
 
       //Alert.alert("Success", "Payment completed");
 
-      navigation.navigate("Razorpay", {
-        bookingId: bookingId,
-        amount: job.totalPrice* 100,
-        orderId: job.razorpayOrderId, // backend should already have it
+      navigation.replace("Razorpay", {
+        bookingId,
+        amount: res.data.amount,
+        orderId: orderId,
       });
 
     } catch (err: any) {
@@ -420,7 +428,7 @@ export const EmpBookingScreen = () => {
 
             {/* ✅ After OTP Verified */}
             {/* 1️⃣ Parts / Payment Section */}
-            {otpVerified  && (
+            {otpVerified && (
               <View style={{ marginVertical: 8 }}>
                 <Text style={styles.subTitle}>
                   Continue your job or complete payment
@@ -435,10 +443,10 @@ export const EmpBookingScreen = () => {
                 )} */}
 
                 <BottomButton
-                    title="Add Parts"
-                    onPress={handlePartsPress}
-                    widthCount={0.4}
-                  />
+                  title="Add Parts"
+                  onPress={handlePartsPress}
+                  widthCount={0.4}
+                />
 
                 <BottomButton
                   title="Pay & Complete (Cash)"
@@ -454,15 +462,15 @@ export const EmpBookingScreen = () => {
               </View>
             )}
             {pickupDetails && (
-                  <View style={[styles.shopContainer, { marginTop: 12 }]}>
-                    <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>
-                    <Text style={styles.shopAddress}>Address: {pickupDetails.shop?.address}</Text>
-                    {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
-                      <Text key={i}>{p.partName || p.partsname || p.partsname} x {p.quantity}</Text>
-                    ))}
-                    <Text style={styles.shopOtp}>Pickup OTP: {pickupDetails.otp}</Text>
-                  </View>
-                )}
+              <View style={[styles.shopContainer, { marginTop: 12 }]}>
+                <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>
+                <Text style={styles.shopAddress}>Address: {pickupDetails.shop?.address}</Text>
+                {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
+                  <Text key={i}>{p.partName || p.partsname || p.partsname} x {p.quantity}</Text>
+                ))}
+                <Text style={styles.shopOtp}>Pickup OTP: {pickupDetails.otp}</Text>
+              </View>
+            )}
 
           </ScrollView>
         </TouchableWithoutFeedback>

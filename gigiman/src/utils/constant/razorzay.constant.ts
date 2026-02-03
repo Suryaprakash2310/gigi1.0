@@ -1,4 +1,4 @@
 import Constants from "expo-constants";
 
-export const RAZORPAY_KEY_ID =
-  Constants.expoConfig?.extra?.RAZORPAY_KEY_ID;
+export const RZ_KEY_ID =
+  Constants.expoConfig?.extra?.extra?.RZ_KEY_ID;
