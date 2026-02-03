@@ -36,11 +36,12 @@
         "projectId": "a1bc9b3c-c141-4131-9976-aad5f93765c2"
       },
       "extra": {
-      "RAZORPAY_KEY_ID": "rzp_test_Rozlevr5lLPDR9"
-    }
+        "RZ_KEY_ID": "rzp_test_Rozlevr5lLPDR9"
+      }
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "owner": "suryaprakash23"
   }
 }
