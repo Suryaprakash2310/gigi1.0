@@ -50,25 +50,32 @@ export interface Booking {
 }
 
 export interface BookingStats {
-  todayBookings: number;
-  last7DaysBookings: number;
-  last30DaysBookings: number;
-  totalCompletedJobs: number;
+  todayJobs: number;
+  todayEarnings: number;
   totalRevenue: number;
-  statusBreakdown: {
-    _id: string;
-    count: number;
-  }[];
-  popularServices: {
-    _id: string;
-    totalBookings: number;
-  }[];
+  totalDone: number;
+}
+
+export interface ChartDataPoint {
+  _id: string | number;
+  amount: number;
 }
 
 export interface BookingHistoryResponse {
-  bookings: Booking[];
-  totalBookings: number;
+  success: boolean;
   stats: BookingStats;
+  charts: {
+    weekly: ChartDataPoint[];
+    monthly: ChartDataPoint[];
+    yearly: ChartDataPoint[];
+  };
+  highestEarning: {
+    weekly: ChartDataPoint;
+    monthly: ChartDataPoint;
+    yearly: ChartDataPoint;
+  };
+  totalBookings: number;
+  bookings: Booking[];
 }
 
 export const ProfileAPI = {

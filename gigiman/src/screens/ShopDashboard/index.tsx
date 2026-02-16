@@ -15,6 +15,7 @@ import { socket } from "@/socket/socket";
 import { WorkingModeToggle } from "../EmpDashboard/WorkingModeToggle";
 import { fetchPartRequestById } from "@/api/parts.api";
 import OtpInput from "../../components/OtpInput";
+import { LiveTrackerModal } from "../../components/toolshop/LiveTrackerModal";
 
 export const ToolShopDashboard = () => {
   const [workingMode, setWorkingMode] = useState(false);
@@ -45,7 +46,7 @@ export const ToolShopDashboard = () => {
         return [{ ...request, requestId: request._id }, ...prev];
       });
     };
-    console.log("----------",incomingRequests);
+    console.log("----------", incomingRequests);
 
     socket.on("toolshop-booking-request", handler);
     return () => {
@@ -111,53 +112,94 @@ export const ToolShopDashboard = () => {
     setActiveRequest(req);
     setOtpModalVisible(true);
   };
-   
+
   const verifyOtp = (otp: string) => {
-  if (!activeRequest) return;
+    if (!activeRequest) return;
 
-  console.log("📤 Verifying OTP:", otp);
+    console.log("📤 Verifying OTP:", otp);
 
-  socket.emit("verify-part-otp", {
-    requestId: activeRequest.requestId,
-    otp,
-  });
-};
+    socket.emit("verify-part-otp", {
+      requestId: activeRequest.requestId,
+      otp,
+    });
+  };
 
-  
+
 
   /* ===============================
      OTP SOCKET RESULT
   =============================== */
   useEffect(() => {
-  const onSuccess = () => {
-    Alert.alert("Success", "Parts handed over successfully");
+    const onSuccess = () => {
+      Alert.alert("Success", "Parts handed over successfully");
 
-    // Close modal
-    setOtpModalVisible(false);
+      // Close modal
+      setOtpModalVisible(false);
 
-    // Remove from accepted list
-    setAcceptedRequests(prev =>
-      prev.filter(r => r.requestId !== activeRequest?.requestId)
-    );
+      // Remove from accepted list
+      setAcceptedRequests(prev =>
+        prev.filter(r => r.requestId !== activeRequest?.requestId)
+      );
 
-    setActiveRequest(null);
+      setActiveRequest(null);
+    };
+
+    const onFailed = ({ message }: any) => {
+      Alert.alert("Invalid OTP", message || "Try again");
+    };
+
+    socket.on("part-otp-success", onSuccess);
+    socket.on("otp-failed", onFailed);
+
+    return () => {
+      socket.off("part-otp-success", onSuccess);
+      socket.off("otp-failed", onFailed);
+    };
+  }, [activeRequest]);
+
+
+
+
+  const [trackModalVisible, setTrackModalVisible] = useState(false);
+  const [trackLocation, setTrackLocation] = useState<any>(null);
+  const [activeTrackingId, setActiveTrackingId] = useState<string | null>(null);
+
+  /* ===============================
+     TRACKING SOCKET
+  =============================== */
+  useEffect(() => {
+    // Join the tracking room for any active request
+    if (activeTrackingId) {
+      socket.emit("join-tracking", { bookingId: activeTrackingId });
+      console.log(`🔌 Joining room: ${activeTrackingId}`);
+    }
+
+    const handleLocation = (data: any) => {
+      console.log("📍 Location Update:", data);
+
+      // Check if update matches our tracked booking
+      if (activeTrackingId && data.bookingId === activeTrackingId) {
+        setTrackLocation(data); // data contains { latitude, longitude, eta... } directly
+      }
+    };
+
+    // Listen to the new event name
+    socket.on("servicer-location-update", handleLocation);
+
+    // Keep old ones just in case backend emits them temporarily
+    socket.on("receive-location", handleLocation);
+
+    return () => {
+      socket.off("servicer-location-update", handleLocation);
+      socket.off("receive-location", handleLocation);
+    };
+  }, [activeTrackingId]);
+
+  const openTracker = (req: any) => {
+    setActiveTrackingId(req.requestId);
+    setTrackModalVisible(true);
+    setTrackLocation(null); // Clear previous
   };
-
-  const onFailed = ({ message }: any) => {
-    Alert.alert("Invalid OTP", message || "Try again");
-  };
-
-  socket.on("part-otp-success", onSuccess);
-  socket.on("otp-failed", onFailed);
-
-  return () => {
-    socket.off("part-otp-success", onSuccess);
-    socket.off("otp-failed", onFailed);
-  };
-}, [activeRequest]);
-
-
-
 
   /* ===============================
      UI
@@ -197,6 +239,7 @@ export const ToolShopDashboard = () => {
             request={item}
             mode="pickup"
             onVerify={() => openOtp(item)}
+            onTrack={() => openTracker(item)}
           />
         )}
         ListEmptyComponent={<Text style={styles.empty}>No accepted requests</Text>}
@@ -205,27 +248,37 @@ export const ToolShopDashboard = () => {
 
       {/* OTP MODAL */}
       <Modal visible={otpModalVisible} transparent animationType="slide">
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalCard}>
-      <Text style={styles.modalTitle}>Verify Pickup OTP</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Verify Pickup OTP</Text>
 
-      <OtpInput
-        otpLength={4}
-        onOtpComplete={verifyOtp}
-      />
+            <OtpInput
+              otpLength={4}
+              onOtpComplete={verifyOtp}
+            />
 
-      <TouchableOpacity
-        style={styles.cancelBtn}
-        onPress={() => {
-          setOtpModalVisible(false);
-          setActiveRequest(null);
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => {
+                setOtpModalVisible(false);
+                setActiveRequest(null);
+              }}
+            >
+              <Text>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* LIVE TRACKER MODAL */}
+      <LiveTrackerModal
+        visible={trackModalVisible}
+        onClose={() => {
+          setTrackModalVisible(false);
+          setActiveTrackingId(null);
         }}
-      >
-        <Text>Cancel</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
+        location={trackLocation}
+      />
 
     </View>
   );

@@ -4,26 +4,26 @@ import { theme } from '../../theme/theme';
 
 interface UserDetailContainerProps {
   name: string;
-  work: string;
+  serviceCategoryName: string;
   cost: string;
-  workingHours?: string;
+  durationInMinutes?: string;
   employeeCount: string;
   address: string;
 }
 
 export const UserDetailContainer = ({
   name,
-  work,
+  serviceCategoryName,
   cost,
-  workingHours,
+  durationInMinutes,
   employeeCount,
   address,
 }: UserDetailContainerProps) => {
   const details = [
     { label: 'Name', value: name },
-    { label: 'Work', value: work },
+    { label: 'Work', value: serviceCategoryName },
     { label: 'Cost', value: cost },
-    ...(workingHours ? [{ label: 'Working Hours', value: workingHours }] : []),
+    ...(durationInMinutes ? [{ label: 'Working Hours', value: durationInMinutes }] : []),
     { label: 'Employee Count', value: employeeCount },
     { label: 'Address', value: address },
   ];

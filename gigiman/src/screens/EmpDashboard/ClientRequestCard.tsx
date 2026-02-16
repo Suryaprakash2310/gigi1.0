@@ -24,8 +24,9 @@ interface TeamMember {
 
 interface ClientRequest {
   name: string;
-  work?: string;
+  serviceCategoryName?: string;
   cost?: string;
+  durationInMinutes?: string;
   address?: string;
   items?: Item[];
   total?: number;
@@ -131,9 +132,9 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
 
         {role !== 'toolshop' && (
           <>
-            {data.work && (
+            {data.serviceCategoryName && (
               <Text style={styles.infoText}>
-                WORK : <Text style={styles.value}>{data.work}</Text>
+                WORK : <Text style={styles.value}>{data.serviceCategoryName}</Text>
               </Text>
             )}
             {data.address && (
@@ -141,6 +142,20 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
                 ADDRESS : <Text style={styles.value}>{data.address}</Text>
               </Text>
             )}
+            {
+              data.cost && (
+                <Text style={styles.infoText}>
+                  COST : <Text style={styles.value}>₹ {data.cost}</Text>
+                </Text>
+              )
+            }
+            {
+              data.durationInMinutes && (
+                <Text style={styles.infoText}>
+                  DURATION : <Text style={styles.value}>{data.durationInMinutes}</Text>
+                </Text>
+              )
+            }
           </>
         )}
       </View>
@@ -210,7 +225,7 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
             //     helperEmpIds: helpers,
             //   });
             // } else {
-              onAccept?.();
+            onAccept?.();
             // }
           }}
         >

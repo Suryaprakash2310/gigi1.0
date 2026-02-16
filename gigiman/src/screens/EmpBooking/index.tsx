@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LiveTrackerModal, EmbeddedTrackingMap } from "../../components/toolshop/LiveTrackerModal";
 import {
   View,
   Text,
@@ -24,6 +25,7 @@ import { BookingStackParamList } from '../../navigation/EmpBookingStack';
 import { AppStackParamList } from '../../navigation/EmployeeStack';
 import { socket } from '@/socket/socket';
 import apiClient from '@/api/client';
+import * as Location from 'expo-location';
 import { createOrder, paymentSuccessApi } from '@/api/payment.api';
 import { AuthContext } from '@/context/AuthContext';
 //const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
@@ -75,11 +77,11 @@ export const EmpBookingScreen = () => {
   const handleRazorpayPayment = async () => {
     try {
 
-      const res = await createOrder(bookingId!, Number(job.totalPrice));
+      const res = await createOrder(bookingId!, Number(job.cost));
       console.log("🧾 Order created:", res.data);
-      const  orderId  = res.data.orderId;
+      const orderId = res.data.orderId;
 
-      
+
 
       // const options = {
       //   description: "Gigiman Service Payment",
@@ -134,6 +136,8 @@ export const EmpBookingScreen = () => {
   const [partRequest, setPartRequest] = useState<any>(null);
   const [waitingApproval, setWaitingApproval] = useState(false);
   const [partsCollected, setPartsCollected] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [myLocation, setMyLocation] = useState<any>(null);
 
   //   const PART_REQUEST_STATUS = {
   //   REQUESTED: "REQUESTED",
@@ -165,6 +169,8 @@ export const EmpBookingScreen = () => {
   //   }, [route.params])
   // );
 
+
+
   useEffect(() => {
     const loadBooking = async () => {
       try {
@@ -184,6 +190,84 @@ export const EmpBookingScreen = () => {
     };
     loadBooking();
   }, [bookingId]);
+
+
+
+  /* ======================================================
+     LIVE TRACKING (PROVIDER SIDE)
+  ====================================================== */
+  useEffect(() => {
+    let subscription: Location.LocationSubscription | null = null;
+    let isMounted = true;
+
+    const startTracking = async () => {
+      // 1. Check/Request Permissions
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (!isMounted) return;
+
+        if (status !== 'granted') {
+          console.log('🚫 Location permission denied');
+          return;
+        }
+
+        // 2. Start Watching
+        console.log("🛰️ Starting Live Tracking for Booking:", bookingId);
+        const sub = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5000,
+            distanceInterval: 10,
+          },
+          (location) => {
+            if (!isMounted) return;
+            const { latitude, longitude, heading } = location.coords;
+
+            setMyLocation({ latitude, longitude, heading }); // Update local state for Map Modal
+
+            console.log("📍 Location Emitted:", latitude, longitude);
+
+            // EMIT TO BACKEND
+            socket.emit("send-location", {
+              bookingId,
+              location: {
+                latitude,
+                longitude,
+                heading,
+                eta: "10 mins"
+              }
+            });
+          }
+        );
+
+        if (isMounted) {
+          subscription = sub;
+        } else {
+          // If unmounted while waiting for promise, remove immediately
+          sub.remove();
+        }
+      } catch (error) {
+        console.log("Error starting location tracking:", error);
+      }
+    };
+
+    if (bookingId && !otpVerified) {
+      startTracking();
+    }
+
+    return () => {
+      isMounted = false;
+      console.log("🛑 Stopping Live Tracking");
+      try {
+        if (subscription) {
+          subscription.remove();
+        }
+      } catch (e) {
+        console.log("Error removing location subscription:", e);
+      }
+    };
+  }, [bookingId, otpVerified]);
+
 
 
   /* ======================================================
@@ -393,22 +477,37 @@ export const EmpBookingScreen = () => {
             {/* ✅ Job Details Section */}
             <UserDetailContainer
               name={job?.name || 'Unknown'}
-              work={job?.work || '-'}
-              cost={job?.cost || '-'}
+              serviceCategoryName={job?.serviceCategoryName || '-'}
+              cost={`₹ ${job?.cost}` || '-'}
               address={job?.address || '-'}
               employeeCount={job?.employeeCount || '1'}
-              workingHours={job?.workingHours || 'Not Provided'}
+              durationInMinutes={job?.durationInMinutes || 'Not Provided'}
             />
 
             {/* ✅ OTP Verification Section */}
             {!otpVerified && (
               <View style={styles.otpContainer}>
+                {/* Tracking Indicator & Navigation Map */}
+                <View style={{ marginBottom: 16, width: '100%' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: '#e3f2fd', padding: 8, borderRadius: 8 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#2196F3', marginRight: 8 }} />
+                    <Text style={{ color: '#0d47a1', fontWeight: '600' }}>Live Location Active (Navigating...)</Text>
+                  </View>
+
+                  {/* EMBEDDED MAP */}
+                  <EmbeddedTrackingMap
+                    location={myLocation}
+                    destination={job?.coordinates ? { latitude: job.coordinates.latitude ?? job.coordinates[1], longitude: job.coordinates.longitude ?? job.coordinates[0] } : undefined}
+                    height={250}
+                  />
+                </View>
+
                 <Text style={styles.subTitle}>
                   Go to the client location and get the OTP to start work!
                 </Text>
                 <Text style={styles.label}>Enter OTP:</Text>
 
-                <OtpInput onOtpComplete={(code) => setOtp(code)} />
+                <OtpInput onOtpComplete={(code) => setOtp(code)} resendEnabled={false} />
 
                 {/* If pickup details from toolshop arrive before OTP verification, show them here too */}
                 {pickupDetails && (

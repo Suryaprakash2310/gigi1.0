@@ -24,7 +24,9 @@ export default function RecentBookingCard({ booking }: Props) {
           </Text>
         </View>
 
-        <Text style={styles.amount}>₹{booking.totalPrice ?? 0}</Text>
+        <View style={styles.amountChip}>
+          <Text style={styles.amountText}>₹{booking.totalPrice ?? 0}</Text>
+        </View>
       </View>
 
       {/* Footer */}
@@ -47,15 +49,21 @@ export default function RecentBookingCard({ booking }: Props) {
 }
 
 function getStatusColor(status?: string) {
-  switch (status) {
+  const s = status?.toUpperCase();
+  switch (s) {
     case "COMPLETED":
-      return { bg: "#E6F7EC", text: "#1E7F4F" };
-    case "CANCELLED":
-      return { bg: "#FDECEA", text: "#D93025" };
+      return { bg: "#E8F5E9", text: "#2E7D32" }; // Green
+    case "PENDING":
+      return { bg: "#FFF3E0", text: "#EF6C00" }; // Orange
+    case "ACCEPTED":
+      return { bg: "#E3F2FD", text: "#1565C0" }; // Blue
     case "ONGOING":
-      return { bg: "#FFF4E5", text: "#E37400" };
+      return { bg: "#E1F5FE", text: "#0288D1" }; // Light Blue
+    case "CANCELLED":
+    case "REJECTED":
+      return { bg: "#FFEBEE", text: "#C62828" }; // Red
     default:
-      return { bg: "#EEE", text: "#555" };
+      return { bg: "#F5F5F5", text: "#616161" }; // Grey
   }
 }
 
@@ -90,10 +98,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  amount: {
-    fontSize: 16,
+  amountChip: {
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+  amountText: {
+    fontSize: 14,
     fontWeight: "700",
-    color: theme.colors.primary,
+    color: "#2E7D32",
   },
 
   bottomRow: {

@@ -11,7 +11,7 @@ export function getWeeklyRevenue(bookings: Booking[]) {
   last7Days.setDate(today.getDate() - 6);
 
   bookings.forEach((booking) => {
-    if (booking.status !== "COMPLETED") return;
+    if (booking.status?.toUpperCase() !== "COMPLETED") return;
 
     const date = new Date(booking.createdAt);
     if (date < last7Days) return;

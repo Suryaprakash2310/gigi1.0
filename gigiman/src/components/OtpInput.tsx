@@ -24,27 +24,27 @@ export interface OtpInputRef {
 
 
 const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
-({
-  otpLength = 4,
-  onOtpComplete,
-  resendEnabled = true,
-  resendTime = 60,
-  onResend,
-},  ref
-) => {
-  const [otp, setOtp] = useState<string[]>(Array(otpLength).fill(''));
-  const [timer, setTimer] = useState<number>(resendTime);
-  const inputRefs = useRef<TextInput[]>([]);
+  ({
+    otpLength = 4,
+    onOtpComplete,
+    resendEnabled = true,
+    resendTime = 60,
+    onResend,
+  }, ref
+  ) => {
+    const [otp, setOtp] = useState<string[]>(Array(otpLength).fill(''));
+    const [timer, setTimer] = useState<number>(resendTime);
+    const inputRefs = useRef<TextInput[]>([]);
 
-  // Timer countdown
-  useEffect(() => {
-    if (!resendEnabled) return;
-    if (timer === 0) return;
-    const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
-    return () => clearInterval(interval);
-  }, [timer, resendEnabled]);
+    // Timer countdown
+    useEffect(() => {
+      if (!resendEnabled) return;
+      if (timer === 0) return;
+      const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
+      return () => clearInterval(interval);
+    }, [timer, resendEnabled]);
 
-  // Expose methods to parent
+    // Expose methods to parent
     useImperativeHandle(ref, () => ({
       reset: () => {
         setOtp(Array(otpLength).fill(''));
@@ -65,12 +65,12 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
     }));
 
 
-  // Handle text change for each box
-  const handleChange = (text: string, index: number) => {
-    
-    // Filter non-numeric
+    // Handle text change for each box
+    const handleChange = (text: string, index: number) => {
+
+      // Filter non-numeric
       const filtered = text.replace(/[^0-9]/g, '');
-       // If pasted multiple digits (paste-to-fill)
+      // If pasted multiple digits (paste-to-fill)
       if (filtered.length > 1) {
         const chars = filtered.split('');
         const newOtp = [...otp];
@@ -88,69 +88,69 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
       }
 
 
-    
-    const newOtp = [...otp];
-    newOtp[index] = text;
 
-    setOtp(newOtp);
+      const newOtp = [...otp];
+      newOtp[index] = text;
 
-    if (text && index < otpLength - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
+      setOtp(newOtp);
 
-    if (newOtp.join('').length === otpLength) {
-      onOtpComplete(newOtp.join(''));
-      Keyboard.dismiss();
+      if (text && index < otpLength - 1) {
+        inputRefs.current[index + 1]?.focus();
+      }
 
-    }
-  };
+      if (newOtp.join('').length === otpLength) {
+        onOtpComplete(newOtp.join(''));
+        Keyboard.dismiss();
 
-  // Handle backspace
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
+      }
+    };
 
-  // Handle resend
-  const handleResend = () => {
-    if (onResend) onResend();
-    setTimer(resendTime);
-  };
+    // Handle backspace
+    const handleKeyPress = (e: any, index: number) => {
+      if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+        inputRefs.current[index - 1]?.focus();
+      }
+    };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.otpContainer}>
-        {otp.map((digit, index) => (
-          <TextInput
-            key={index}
-            ref={(ref) => (inputRefs.current[index] = ref!)}
-            style={styles.input}
-            keyboardType="number-pad"
-            maxLength={1}
-            value={digit}
-            onChangeText={(text) => handleChange(text, index)}
-            onKeyPress={(e) => handleKeyPress(e, index)}
-            returnKeyType="next"
-          />
-        ))}
-      </View>
+    // Handle resend
+    const handleResend = () => {
+      if (onResend) onResend();
+      setTimer(resendTime);
+    };
 
-      <View style={styles.bottomContainer}>
-        <Text style={styles.text}>Didn't receive code?</Text>
+    return (
+      <View style={styles.container}>
+        <View style={styles.otpContainer}>
+          {otp.map((digit, index) => (
+            <TextInput
+              key={index}
+              ref={(ref) => { inputRefs.current[index] = ref!; }}
+              style={styles.input}
+              keyboardType="number-pad"
+              maxLength={1}
+              value={digit}
+              onChangeText={(text) => handleChange(text, index)}
+              onKeyPress={(e) => handleKeyPress(e, index)}
+              returnKeyType="next"
+            />
+          ))}
+        </View>
+
         {resendEnabled && (
-          timer > 0 ? (
-            <Text style={styles.timerText}> Resend 00:{timer < 10 ? `0${timer}` : timer}s</Text>
-          ) : (
-            <TouchableOpacity onPress={handleResend}>
-              <Text style={styles.resendText}> Resend</Text>
-            </TouchableOpacity>
-          )
+          <View style={styles.bottomContainer}>
+            <Text style={styles.text}>Didn't receive code?</Text>
+            {timer > 0 ? (
+              <Text style={styles.timerText}> Resend 00:{timer < 10 ? `0${timer}` : timer}s</Text>
+            ) : (
+              <TouchableOpacity onPress={handleResend}>
+                <Text style={styles.resendText}> Resend</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
-    </View>
-  );
-});
+    );
+  });
 
 const styles = StyleSheet.create({
   container: {

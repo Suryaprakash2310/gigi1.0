@@ -7,6 +7,7 @@ interface RequestCardProps {
   onAccept?: () => void;
   onReject?: () => void;
   onVerify?: () => void;
+  onTrack?: () => void;
   mode: "incoming" | "pickup";
 }
 
@@ -16,6 +17,7 @@ export const RequestCard = ({
   onAccept,
   onReject,
   onVerify,
+  onTrack,
   mode,
 }: RequestCardProps) => {
   return (
@@ -44,9 +46,14 @@ export const RequestCard = ({
       )}
 
       {mode === "pickup" && (
-        <TouchableOpacity onPress={onVerify} style={styles.verify}>
-          <Text style={{ color: "#fff" }}>Verify OTP</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+          <TouchableOpacity onPress={onVerify} style={[styles.verify, { flex: 1 }]}>
+            <Text style={{ color: "#fff", textAlign: 'center' }}>Verify OTP</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onTrack} style={[styles.track, { flex: 1 }]}>
+            <Text style={{ color: "#fff", textAlign: 'center' }}>Track Live</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -81,6 +88,11 @@ const styles = StyleSheet.create({
   verify: {
     marginTop: 12,
     backgroundColor: theme.colors.primary,
+    padding: 10,
+    borderRadius: 8,
+  },
+  track: {
+    backgroundColor: "#2196F3", // Blue for tracking
     padding: 10,
     borderRadius: 8,
   },
