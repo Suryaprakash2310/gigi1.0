@@ -27,6 +27,7 @@ import { socket } from '@/socket/socket';
 import apiClient from '@/api/client';
 import * as Location from 'expo-location';
 import { createOrder, paymentSuccessApi } from '@/api/payment.api';
+import { fetchPartRequestById } from '@/api/parts.api';
 import { AuthContext } from '@/context/AuthContext';
 //const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
 
@@ -191,11 +192,61 @@ export const EmpBookingScreen = () => {
     loadBooking();
   }, [bookingId]);
 
+  /* ======================================================
+     RESTORE PART REQUEST STATE
+  ====================================================== */
+  useEffect(() => {
+    const restoreState = async () => {
+      if (!bookingId) return;
+
+      const request: any = await fetchPartRequestById(bookingId);
+      console.log("🔄 Restored part request:", request);
+
+      if (request) {
+        setPartRequest(request);
+
+        // If waiting for approval
+        if (request.status === "PENDING") {
+          setWaitingApproval(true);
+        }
+
+        // If approved by user but not yet accepted by shop
+        if (request.status === "APPROVED_BY_USER") {
+          setWaitingApproval(false);
+          // waiting for toolshop accept... (socket will handle)
+        }
+
+        // If shop accepted / ready for pickup
+        if (
+          request.status === "READY_FOR_PICKUP" ||
+          (request.status === "ACCEPTED_BY_TOOLSHOP" && request.shopId)
+        ) {
+          setPickupDetails({
+            requestId: request._id,
+            otp: request.otp, // Ensure backend returns this if viewer is the assigned provider
+            shop: request.selectedToolShop || {}, // Backend should populate this
+            parts: request.parts,
+            totalCost: request.totalCost,
+          });
+        }
+
+        // If already collected
+        if (request.status === "COLLECTED") {
+          setPartsCollected(true);
+          setPartsFilled(true);
+        }
+      }
+    };
+
+    restoreState();
+  }, [bookingId]);
+
 
 
   /* ======================================================
      LIVE TRACKING (PROVIDER SIDE)
   ====================================================== */
+
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
     let isMounted = true;
@@ -509,18 +560,6 @@ export const EmpBookingScreen = () => {
 
                 <OtpInput onOtpComplete={(code) => setOtp(code)} resendEnabled={false} />
 
-                {/* If pickup details from toolshop arrive before OTP verification, show them here too */}
-                {pickupDetails && (
-                  <View style={[styles.shopContainer, { marginTop: 12 }]}>
-                    <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>
-                    <Text style={styles.shopAddress}>Address: {pickupDetails.shop?.address}</Text>
-                    {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
-                      <Text key={i}>{p.partName || p.partsname || p.partsname} x {p.quantity}</Text>
-                    ))}
-                    <Text style={styles.shopOtp}>Pickup OTP: {pickupDetails.otp}</Text>
-                  </View>
-                )}
-
                 <BottomButton onPress={handleVerifyOtp} title="Verify" widthCount={0.5} />
               </View>
             )}
@@ -532,14 +571,6 @@ export const EmpBookingScreen = () => {
                 <Text style={styles.subTitle}>
                   Continue your job or complete payment
                 </Text>
-
-                {/* {!partsCollected && (
-                  <BottomButton
-                    title="Add Parts"
-                    onPress={handlePartsPress}
-                    widthCount={0.4}
-                  />
-                )} */}
 
                 <BottomButton
                   title="Add Parts"
@@ -560,14 +591,26 @@ export const EmpBookingScreen = () => {
                 />
               </View>
             )}
+            {/* ✅ Pickup Details (Shown regardless of OTP status if available) */}
             {pickupDetails && (
               <View style={[styles.shopContainer, { marginTop: 12 }]}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>Parts Ready for Pickup 🏪</Text>
                 <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>
                 <Text style={styles.shopAddress}>Address: {pickupDetails.shop?.address}</Text>
-                {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
-                  <Text key={i}>{p.partName || p.partsname || p.partsname} x {p.quantity}</Text>
-                ))}
-                <Text style={styles.shopOtp}>Pickup OTP: {pickupDetails.otp}</Text>
+
+                <View style={{ marginVertical: 8, backgroundColor: '#fff', padding: 8, borderRadius: 8 }}>
+                  <Text style={{ fontWeight: '600', marginBottom: 4 }}>Items:</Text>
+                  {Array.isArray(pickupDetails.parts) && pickupDetails.parts.map((p: any, i: number) => (
+                    <Text key={i} style={{ fontSize: 14 }}>• {p.partName || p.partsname || p.partsname} x {p.quantity}</Text>
+                  ))}
+                  <Text style={{ marginTop: 4, fontWeight: 'bold' }}>Total Cost: ₹{pickupDetails.totalCost}</Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                  <Text style={styles.shopOtp}>Pickup OTP: </Text>
+                  <Text style={[styles.shopOtp, { fontSize: 24, color: theme.colors.primary }]}>{pickupDetails.otp}</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#666' }}>Show this OTP to the shop keeper</Text>
               </View>
             )}
 
