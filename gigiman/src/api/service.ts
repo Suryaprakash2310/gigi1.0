@@ -26,14 +26,14 @@ export const ServiceAPI = {
     const res = await apiClient.get<ServiceResponse>(`/auth/services/search?q=${query}`);
     return res.data;
   },
-  addMultipleServices: async (token: string, serviceIds: string[]) => {
-    const res = await axios.post(
-      `${API_BASE_URL}/employee/addServices`,
-      { serviceIds },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    return res.data;
-  },
+  // addMultipleServices: async (token: string, serviceIds: string[]) => {
+  //   const res = await axios.post(
+  //     `${API_BASE_URL}/employee/addServices`,
+  //     { serviceIds },
+  //     {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     }
+  //   );
+  //   return res.data;
+  // },
 };

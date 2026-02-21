@@ -140,6 +140,7 @@ export const EmpBookingScreen = () => {
   const [mapVisible, setMapVisible] = useState(false);
   const [myLocation, setMyLocation] = useState<any>(null);
 
+  const [waitingServiceApproval, setWaitingServiceApproval] = useState(false);
   //   const PART_REQUEST_STATUS = {
   //   REQUESTED: "REQUESTED",
   //   APPROVED_BY_USER: "APPROVED_BY_USER",
@@ -170,10 +171,16 @@ export const EmpBookingScreen = () => {
   //   }, [route.params])
   // );
 
+  useEffect(() => {
+    if ((route.params as any)?.serviceWaiting) {
+      setWaitingServiceApproval(true);
+    }
+  }, [route.params]);
 
 
   useEffect(() => {
     const loadBooking = async () => {
+
       try {
         console.log("Started");
         const res = await apiClient.get<{ booking?: any }>(`/booking/${bookingId}`);
@@ -382,6 +389,32 @@ export const EmpBookingScreen = () => {
     };
   }, [partsCollected]);
 
+  useEffect(() => {
+    const onServiceApproved = ({ bookingId: id }: any) => {
+      if (id !== bookingId) return;
+
+      console.log("✅ Service approved by user");
+      setWaitingServiceApproval(false);
+    };
+
+    const onServiceRejected = ({ bookingId: id }: any) => {
+      if (id !== bookingId) return;
+
+      console.log("❌ Service rejected by user");
+      setWaitingServiceApproval(false);
+
+      Alert.alert("Customer Rejected", "Continue with original service.");
+    };
+
+    socket.on("service-approved", onServiceApproved);
+    socket.on("service-rejected", onServiceRejected);
+
+    return () => {
+      socket.off("service-approved", onServiceApproved);
+      socket.off("service-rejected", onServiceRejected);
+    };
+  }, [bookingId]);
+
 
 
 
@@ -577,6 +610,24 @@ export const EmpBookingScreen = () => {
                   onPress={handlePartsPress}
                   widthCount={0.4}
                 />
+                {waitingServiceApproval && (
+                  <View style={styles.waitingBanner}>
+                    <Text style={styles.waitingText}>
+                      Waiting for customer approval…
+                    </Text>
+                  </View>
+                )}
+                <BottomButton
+                  title={waitingServiceApproval ? "Waiting for Approval..." : "Add Service"}
+                  onPress={() =>
+                    !waitingServiceApproval &&
+                    navigation.navigate("AddService", {
+                      bookingId,
+                      domainServiceId: job?.domainServiceId,
+                    })
+                  }
+                widthCount={0.4}
+                />
 
                 <BottomButton
                   title="Pay & Complete (Cash)"
@@ -673,4 +724,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   partsText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  waitingBanner: {
+    backgroundColor: "#FEF9C3",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+
+  waitingText: {
+    color: "#92400E",
+    fontWeight: "600",
+    textAlign: "center",
+  },
 });
