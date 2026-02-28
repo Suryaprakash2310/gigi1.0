@@ -21,7 +21,7 @@ export default function AddServiceScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { bookingId, domainServiceId } = route.params;
-   const [providerId, setProviderId] = useState<string | null>(null);
+  const [providerId, setProviderId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,11 +50,18 @@ export default function AddServiceScreen() {
   // ===============================
   const fetchCategories = async () => {
     try {
-      if (!domainServiceId) return;
+      if (!domainServiceId) {
+        console.log("❌ domainServiceId missing");
+        return;
+      }
+
+      console.log("📡 Fetching services for:", domainServiceId);
 
       const res = await apiClient.get(
         `auth/showsubservice/${domainServiceId}`
       );
+
+      console.log("📦 API Response:", res.data);
 
       const flatCategories =
         (res.data as any)?.services?.flatMap((s: any) =>
@@ -68,14 +75,15 @@ export default function AddServiceScreen() {
           }))
         ) || [];
 
+      console.log("📋 Flattened Categories:", flatCategories);
+
       setCategories(flatCategories);
     } catch (err) {
-      console.log("Failed to load services");
+      console.log("❌ Failed to load services:", err);
     } finally {
       setLoading(false);
     }
   };
-
   // ===============================
   // TAP SERVICE → OPEN DIALOG
   // ===============================
@@ -91,17 +99,21 @@ export default function AddServiceScreen() {
     if (!selectedService) return;
 
     console.log("📤 Proposing service:", selectedService.serviceCategoryName);
-
-    socket.emit("visit-propose-service", {
+    console.log("📤 EMITTING extra-service-propose", {
       bookingId,
       employeeId: providerId,
       serviceCategoryId: selectedService._id,
+    });
+    socket.emit("extra-service-propose", {
+      bookingId,
+      serviceCategoryId: selectedService._id,
+      employeeId: providerId,
     });
 
     setConfirmVisible(false);
     setSelectedService(null);
 
-   navigation.goBack();
+    navigation.goBack();
   };
 
   // ===============================
@@ -131,7 +143,7 @@ export default function AddServiceScreen() {
             onPress={() => handleSelect(item)}
           >
             <View style={styles.cardTop}>
-              <AppText  style={styles.serviceName}>
+              <AppText style={styles.serviceName}>
                 {item.serviceCategoryName}
               </AppText>
 
