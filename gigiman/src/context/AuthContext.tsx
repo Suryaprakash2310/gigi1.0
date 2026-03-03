@@ -51,75 +51,75 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
 
-  useEffect(() => {
-    if (userToken && userRole) {
-      console.log("🔌 Provider socket connecting...");
-      socket.connect();
-    }
+  // useEffect(() => {
+  //   if (userToken && userRole) {
+  //     console.log("🔌 Provider socket connecting...");
+  //     socket.connect();
+  //   }
 
-    return () => {
-      if (socket.connected) {
-        console.log("❌ Provider socket disconnect");
-        socket.disconnect();
-      }
-    };
-  }, [userToken, userRole]);
-  useEffect(() => {
-    let isMounted = true;
+  //   return () => {
+  //     if (socket.connected) {
+  //       console.log("❌ Provider socket disconnect");
+  //       socket.disconnect();
+  //     }
+  //   };
+  // }, [userToken, userRole]);
+  // useEffect(() => {
+  //   let isMounted = true;
 
-    const setupSocket = async () => {
-      const providerId = await AsyncStorage.getItem("providerId");
-      if (!providerId || !userRole) return;
+  //   const setupSocket = async () => {
+  //     const providerId = await AsyncStorage.getItem("providerId");
+  //     if (!providerId || !userRole) return;
 
-      // ✅ ensure connection
-      if (!socket.connected) {
-        socket.connect();
-      }
+  //     // ✅ ensure connection
+  //     if (!socket.connected) {
+  //       socket.connect();
+  //     }
 
-      // ✅ wait until connected
-      socket.once("connect", () => {
-        if (!isMounted) return;
+  //     // ✅ wait until connected
+  //     socket.once("connect", () => {
+  //       if (!isMounted) return;
 
-        if (userRole === UserRole.SINGLE_EMPLOYEE) {
-          socket.emit("register-employee", { employeeId: providerId });
-        }
+  //       if (userRole === UserRole.SINGLE_EMPLOYEE) {
+  //         socket.emit("register-employee", { employeeId: providerId });
+  //       }
 
-        if (userRole === UserRole.MULTI_EMPLOYEE) {
-          socket.emit("register-team", { teamId: providerId });
-        }
+  //       if (userRole === UserRole.MULTI_EMPLOYEE) {
+  //         socket.emit("register-team", { teamId: providerId });
+  //       }
 
-        if (userRole === UserRole.TOOL_SHOP) {
-          socket.emit("register-toolshop", { shopId: providerId });
-        }
+  //       if (userRole === UserRole.TOOL_SHOP) {
+  //         socket.emit("register-toolshop", { shopId: providerId });
+  //       }
 
-        console.log("✅ Provider registered:", userRole, providerId);
-      });
-    };
+  //       console.log("✅ Provider registered:", userRole, providerId);
+  //     });
+  //   };
 
-    setupSocket();
+  //   setupSocket();
 
-    return () => {
+  //   return () => {
 
-      isMounted = false;
-    };
-  }, [userRole]);
+  //     isMounted = false;
+  //   };
+  // }, [userRole]);
 
 
 
-  useEffect(() => {
-    socket.on("new-booking-request", ({ bookingId }) => {
-      console.log("📥 New booking request:", bookingId);
-    });
+  // useEffect(() => {
+  //   socket.on("new-booking-request", ({ bookingId }) => {
+  //     console.log("📥 New booking request:", bookingId);
+  //   });
 
-    socket.on("team-booking-request", ({ bookingId }) => {
-      console.log("🔥 TEAM REQUEST RECEIVED:", bookingId);
-    });
+  //   socket.on("team-booking-request", ({ bookingId }) => {
+  //     console.log("🔥 TEAM REQUEST RECEIVED:", bookingId);
+  //   });
 
-    return () => {
-      socket.off("new-booking-request");
-      socket.off("team-booking-request");
-    };
-  }, []);
+  //   return () => {
+  //     socket.off("new-booking-request");
+  //     socket.off("team-booking-request");
+  //   };
+  // }, []);
 
 
 

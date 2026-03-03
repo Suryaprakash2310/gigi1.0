@@ -16,224 +16,90 @@ import { WorkingModeToggle } from "../EmpDashboard/WorkingModeToggle";
 import { fetchPartRequestById } from "@/api/parts.api";
 import OtpInput from "../../components/OtpInput";
 import { LiveTrackerModal } from "../../components/toolshop/LiveTrackerModal";
+import { useToolShop } from "@/context/ToolShopContext";
 
 export const ToolShopDashboard = () => {
-  const [workingMode, setWorkingMode] = useState(false);
-  const [shopId, setShopId] = useState<string | null>(null);
+  const {
+    workingMode,
+    toggleWorkingMode,
+    incomingRequests,
+    acceptedRequests,
+    acceptRequest,
+    rejectRequest,
+    verifyOtp,
+    trackingId,
+    setTrackingId,
+    trackLocation,
+    activeRequest,
+    setActiveRequest,
+    otpModalVisible,
+    setOtpModalVisible,
+  } = useToolShop();
 
-  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
-  const [acceptedRequests, setAcceptedRequests] = useState<any[]>([]);
-
-  const [otpModalVisible, setOtpModalVisible] = useState(false);
-  const [activeRequest, setActiveRequest] = useState<any | null>(null);
-
-  /* ===============================
-     LOAD SHOP ID
-  =============================== */
-  useEffect(() => {
-    AsyncStorage.getItem("providerId").then(setShopId);
-  }, []);
-
-  /* ===============================
-     SOCKET: RECEIVE REQUEST
-  =============================== */
-  useEffect(() => {
-    const handler = async ({ requestId }: { requestId: string }) => {
-      const request = await fetchPartRequestById(requestId);
-
-      setIncomingRequests(prev => {
-        if (prev.some(r => r.requestId === request._id)) return prev;
-        return [{ ...request, requestId: request._id }, ...prev];
-      });
-    };
-    console.log("----------", incomingRequests);
-
-    socket.on("toolshop-booking-request", handler);
-    return () => {
-      socket.off("toolshop-booking-request", handler);
-    };
-  }, []);
+  // const [otpModalVisible, setOtpModalVisible] = useState(false);
+  // const [activeRequest, setActiveRequest] = useState<any | null>(null);
+  const [trackModalVisible, setTrackModalVisible] = useState(false);
 
   /* ===============================
-     WORKING MODE
-  =============================== */
-  const handleToggle = (value: boolean) => {
-    setWorkingMode(value);
-
-    if (value && !socket.connected) {
-      socket.connect();
-      socket.emit("register-toolshop", { shopId });
-    }
-
-    if (!value) {
-      socket.disconnect();
-      setIncomingRequests([]);
-      setAcceptedRequests([]);
-    }
-  };
-
-  /* ===============================
-     ACCEPT REQUEST
-  =============================== */
-  const accept = (req: any) => {
-    socket.emit("toolshop-accept", {
-      requestId: req.requestId,
-      shopId,
-    });
-
-    setIncomingRequests(prev =>
-      prev.filter(r => r.requestId !== req.requestId)
-    );
-
-    setAcceptedRequests(prev => [
-      { ...req, status: "READY_FOR_PICKUP" },
-      ...prev,
-    ]);
-  };
-
-  /* ===============================
-     REJECT REQUEST
-  =============================== */
-  const reject = (req: any) => {
-    socket.emit("toolshop-reject", {
-      requestId: req.requestId,
-      shopId,
-    });
-
-    setIncomingRequests(prev =>
-      prev.filter(r => r.requestId !== req.requestId)
-    );
-  };
-
-  /* ===============================
-     OPEN OTP MODAL
+     OPEN OTP
   =============================== */
   const openOtp = (req: any) => {
     setActiveRequest(req);
     setOtpModalVisible(true);
   };
 
-  const verifyOtp = (otp: string) => {
+  const handleVerifyOtp = (otp: string) => {
     if (!activeRequest) return;
 
-    console.log("📤 Verifying OTP:", otp);
+    verifyOtp(activeRequest.requestId, otp);
 
-    socket.emit("verify-part-otp", {
-      requestId: activeRequest.requestId,
-      otp,
-    });
+    setOtpModalVisible(false);
+    setActiveRequest(null);
   };
 
-
-
   /* ===============================
-     OTP SOCKET RESULT
+     OPEN TRACKER
   =============================== */
-  useEffect(() => {
-    const onSuccess = () => {
-      Alert.alert("Success", "Parts handed over successfully");
-
-      // Close modal
-      setOtpModalVisible(false);
-
-      // Remove from accepted list
-      setAcceptedRequests(prev =>
-        prev.filter(r => r.requestId !== activeRequest?.requestId)
-      );
-
-      setActiveRequest(null);
-    };
-
-    const onFailed = ({ message }: any) => {
-      Alert.alert("Invalid OTP", message || "Try again");
-    };
-
-    socket.on("part-otp-success", onSuccess);
-    socket.on("otp-failed", onFailed);
-
-    return () => {
-      socket.off("part-otp-success", onSuccess);
-      socket.off("otp-failed", onFailed);
-    };
-  }, [activeRequest]);
-
-
-
-
-  const [trackModalVisible, setTrackModalVisible] = useState(false);
-  const [trackLocation, setTrackLocation] = useState<any>(null);
-  const [activeTrackingId, setActiveTrackingId] = useState<string | null>(null);
-
-  /* ===============================
-     TRACKING SOCKET
-  =============================== */
-  useEffect(() => {
-    // Join the tracking room for any active request
-    if (activeTrackingId) {
-      socket.emit("join-tracking", { bookingId: activeTrackingId });
-      console.log(`🔌 Joining room: ${activeTrackingId}`);
-    }
-
-    const handleLocation = (data: any) => {
-      console.log("📍 Location Update:", data);
-
-      // Check if update matches our tracked booking
-      if (activeTrackingId && data.bookingId === activeTrackingId) {
-        setTrackLocation(data); // data contains { latitude, longitude, eta... } directly
-      }
-    };
-
-    // Listen to the new event name
-    socket.on("servicer-location-update", handleLocation);
-
-    // Keep old ones just in case backend emits them temporarily
-    socket.on("receive-location", handleLocation);
-
-    return () => {
-      socket.off("servicer-location-update", handleLocation);
-      socket.off("receive-location", handleLocation);
-    };
-  }, [activeTrackingId]);
-
   const openTracker = (req: any) => {
-    setActiveTrackingId(req.requestId);
+    setTrackingId(req.requestId);
     setTrackModalVisible(true);
-    setTrackLocation(null); // Clear previous
   };
 
-  /* ===============================
-     UI
-  =============================== */
   return (
     <View style={{ flex: 1 }}>
       <AppHeader title="Tool Shop Dashboard" />
 
       <View style={{ padding: 16 }}>
-        <WorkingModeToggle value={workingMode} onToggle={handleToggle} />
+        <WorkingModeToggle
+          value={workingMode}
+          onToggle={toggleWorkingMode}
+        />
       </View>
 
-      {/* INCOMING REQUESTS */}
+      {/* INCOMING */}
       <Text style={styles.sectionTitle}>Incoming Requests</Text>
       <FlatList
         data={incomingRequests}
-        keyExtractor={item => item.requestId.toString()}
+        keyExtractor={(item) => item.requestId.toString()}
         renderItem={({ item }) => (
           <RequestCard
             request={item}
             mode="incoming"
-            onAccept={() => accept(item)}
-            onReject={() => reject(item)}
+            onAccept={() => acceptRequest(item)}
+            onReject={() => rejectRequest(item)}
           />
         )}
-        ListEmptyComponent={<Text style={styles.empty}>No incoming requests</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No incoming requests</Text>
+        }
         contentContainerStyle={{ padding: 16 }}
       />
 
-      {/* ACCEPTED REQUESTS */}
+      {/* ACCEPTED */}
       <Text style={styles.sectionTitle}>Waiting Pickup</Text>
       <FlatList
         data={acceptedRequests}
-        keyExtractor={item => item.requestId.toString()}
+        keyExtractor={(item) => item.requestId.toString()}
         renderItem={({ item }) => (
           <RequestCard
             request={item}
@@ -242,7 +108,9 @@ export const ToolShopDashboard = () => {
             onTrack={() => openTracker(item)}
           />
         )}
-        ListEmptyComponent={<Text style={styles.empty}>No accepted requests</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No accepted requests</Text>
+        }
         contentContainerStyle={{ padding: 16 }}
       />
 
@@ -254,7 +122,7 @@ export const ToolShopDashboard = () => {
 
             <OtpInput
               otpLength={4}
-              onOtpComplete={verifyOtp}
+              onOtpComplete={handleVerifyOtp}
             />
 
             <TouchableOpacity
@@ -270,16 +138,15 @@ export const ToolShopDashboard = () => {
         </View>
       </Modal>
 
-      {/* LIVE TRACKER MODAL */}
+      {/* TRACKER MODAL */}
       <LiveTrackerModal
         visible={trackModalVisible}
         onClose={() => {
           setTrackModalVisible(false);
-          setActiveTrackingId(null);
+          setTrackingId(null);
         }}
         location={trackLocation}
       />
-
     </View>
   );
 };

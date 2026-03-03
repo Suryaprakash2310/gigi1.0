@@ -1,0 +1,173 @@
+import { socket } from "@/socket/socket";
+import React, { createContext, useContext, useEffect, useState } from "react";
+
+export interface IncomingBooking {
+  id: string;
+  name: string;
+  work: string;
+  cost?: number;
+  address: string;
+  employeeCount?: number;
+  isTeam?: boolean;
+  teamMembers?: any[];
+  teamId?: string;
+  expiresAt?: number;
+}
+
+interface PickupDetails {
+  requestId: string;
+  otp: string;
+  shop: any;
+  parts: any[];
+  totalCost: number;
+}
+
+
+interface ProviderBookingContextType {
+  clientRequests: IncomingBooking[];
+  workingMode: boolean;
+  setWorkingMode: (val: boolean) => void;
+  addBookingRequest: (booking: IncomingBooking) => void;
+  removeBookingRequest: (bookingId: string) => void;
+
+  // For runtime updates// Runtime booking state
+  otpVerified: boolean;
+  setOtpVerified: React.Dispatch<React.SetStateAction<boolean>>;
+
+  pickupDetails: PickupDetails | null;
+  setPickupDetails: React.Dispatch<
+    React.SetStateAction<PickupDetails | null>
+  >;
+
+  waitingApproval: boolean;
+  setWaitingApproval: React.Dispatch<
+    React.SetStateAction<boolean>
+  >;
+
+  waitingServiceApproval: boolean;
+  setWaitingServiceApproval: React.Dispatch<
+    React.SetStateAction<boolean>
+  >;
+
+  activeBookingId: string | null;
+  setActiveBookingId: (id: string | null) => void;
+  partRequest: any;
+  setPartRequest: React.Dispatch<React.SetStateAction<any>>;
+  resetBookingState: () => void;
+}
+
+const ProviderBookingContext =
+  createContext<ProviderBookingContextType | null>(null);
+
+export function ProviderBookingProvider({ children }: any) {
+  const [clientRequests, setClientRequests] = useState<IncomingBooking[]>([]);
+  const [workingMode, setWorkingMode] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [pickupDetails, setPickupDetails] = useState<PickupDetails | null>(null);
+  const [waitingApproval, setWaitingApproval] = useState(false);
+  const [waitingServiceApproval, setWaitingServiceApproval] = useState(false);
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [partRequest, setPartRequest] = useState<any>(null);
+  const addBookingRequest = (booking: IncomingBooking) => {
+    setClientRequests(prev => {
+      if (prev.some(r => r.id === booking.id)) return prev;
+      return [booking, ...prev];
+    });
+  };
+
+  const removeBookingRequest = (bookingId: string) => {
+    setClientRequests(prev =>
+      prev.filter(r => r.id !== bookingId)
+    );
+  };
+const resetBookingState = () => {
+  setActiveBookingId(null);
+  setOtpVerified(false);
+  setPartRequest(null);
+  setWaitingApproval(false);
+  setWaitingServiceApproval(false);
+  setPickupDetails(null);
+};
+
+  useEffect(() => {
+  const interval = setInterval(() => {
+    const now = Date.now();
+
+    setClientRequests(prev =>
+      prev.filter(job => {
+        if (!job.expiresAt) return true;
+        return job.expiresAt > now;
+      })
+    );
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
+// useEffect(() => {
+//   if (!activeBookingId) return;
+
+//   const handleToolRequestCreated = (payload: any) => {
+//     if (payload.bookingId !== activeBookingId) return;
+
+//     setPartRequest({
+//       requestId: payload.requestId,
+//       totalCost: payload.totalCost,
+//       status: "REQUESTED",
+//     });
+
+//     setWaitingApproval(true);
+//   };
+
+//   const handleToolPermissionApproved = (payload: any) => {
+//     if (payload.bookingId !== activeBookingId) return;
+
+//     setPartRequest((prev: any) =>
+//       prev ? { ...prev, status: "APPROVED_BY_USER" } : prev
+//     );
+
+//     setWaitingApproval(false);
+//   };
+
+//   socket.on("tool-request-created", handleToolRequestCreated);
+//   socket.on("tool-permission-approved", handleToolPermissionApproved);
+
+//   return () => {
+//     socket.off("tool-request-created", handleToolRequestCreated);
+//     socket.off("tool-permission-approved", handleToolPermissionApproved);
+//   };
+// }, [activeBookingId]);
+
+  return (
+    <ProviderBookingContext.Provider
+      value={{
+        clientRequests,
+        workingMode,
+        setWorkingMode,
+        addBookingRequest,
+        removeBookingRequest,
+        otpVerified,
+        setOtpVerified,
+        pickupDetails,
+        setPickupDetails,
+        waitingApproval,
+        setWaitingApproval,
+        waitingServiceApproval,
+        setWaitingServiceApproval,
+        activeBookingId,
+        setActiveBookingId,
+        resetBookingState,
+        setPartRequest,
+        partRequest,
+      }}
+    >
+      {children}
+    </ProviderBookingContext.Provider>
+  );
+}
+
+export const useProviderBooking = () => {
+  const ctx = useContext(ProviderBookingContext);
+  if (!ctx) throw new Error("Must use inside ProviderBookingProvider");
+  return ctx;
+};

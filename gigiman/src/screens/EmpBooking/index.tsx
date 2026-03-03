@@ -29,6 +29,10 @@ import * as Location from 'expo-location';
 import { createOrder, paymentSuccessApi } from '@/api/payment.api';
 import { fetchPartRequestById } from '@/api/parts.api';
 import { AuthContext } from '@/context/AuthContext';
+import { useLiveTracking } from '@/hooks/useLiveTracking';
+import { useProviderBooking } from '@/context/ProviderBookingContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 //const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
 
 const { width } = Dimensions.get('window');
@@ -66,6 +70,8 @@ export const EmpBookingScreen = () => {
       //   navigation.navigate("BookingCompleted", {
       //   bookingId: job._id,
       // });
+      await AsyncStorage.removeItem("activeBookingId");
+      console.log("🗑 Active booking removed");
       navigation.replace("BookingCompleted");
 
     } catch (err: any) {
@@ -121,37 +127,41 @@ export const EmpBookingScreen = () => {
 
 
 
-  console.log("🧭 bookingId:", bookingId);
+  //console.log("🧭 bookingId:", bookingId);
 
 
 
 
   // ✅ State
   const [otp, setOtp] = useState('');
-  const [otpVerified, setOtpVerified] = useState(false);
+ // const [otpVerified, setOtpVerified] = useState(false);
   const [partsFilled, setPartsFilled] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
-  const [pickupDetails, setPickupDetails] = useState<any | null>(null);
+  //const [pickupDetails, setPickupDetails] = useState<any | null>(null);
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [partRequest, setPartRequest] = useState<any>(null);
-  const [waitingApproval, setWaitingApproval] = useState(false);
+  //const [partRequest, setPartRequest] = useState<any>(null);
+  //const [waitingApproval, setWaitingApproval] = useState(false);
   const [partsCollected, setPartsCollected] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const [myLocation, setMyLocation] = useState<any>(null);
 
-  const [waitingServiceApproval, setWaitingServiceApproval] = useState(false);
-  //   const PART_REQUEST_STATUS = {
-  //   REQUESTED: "REQUESTED",
-  //   APPROVED_BY_USER: "APPROVED_BY_USER",
-  //   WAITING_TOOLSHOP: "WAITING_TOOLSHOP",
-  //   READY_FOR_PICKUP: "READY_FOR_PICKUP",
-  //   COLLECTED: "COLLECTED",
-  // };
-  // type PartRequestStatus = keyof typeof PART_REQUEST_STATUS;
+  //const [waitingServiceApproval, setWaitingServiceApproval] = useState(false);
+  const {
+  otpVerified,
+  pickupDetails,
+  setPickupDetails,
+  setOtpVerified,
+  waitingApproval,
+  setWaitingApproval,
+  setWaitingServiceApproval,
+  waitingServiceApproval,
+  partRequest,
+  setPartRequest,
+  setActiveBookingId
+} = useProviderBooking();
 
-
-  console.log('Booking Screen Params:', { bookingId });
+  //console.log('Booking Screen Params:', { bookingId });
   // ✅ Handle case when parts are returned from Parts screen
 
 
@@ -170,6 +180,17 @@ export const EmpBookingScreen = () => {
   //     }
   //   }, [route.params])
   // );
+   useEffect(() => {
+  if (!job) return;
+
+  if (job.status === "in_progress") {
+    console.log("🔄 Job in progress - OTP considered verified");
+    setOtpVerified(true);
+  } else {
+    console.log("🔄 Job not in progress - OTP reset", job.status);
+    setOtpVerified(false);
+  }
+}, [job]);
 
   useEffect(() => {
     if ((route.params as any)?.serviceWaiting) {
@@ -254,78 +275,80 @@ export const EmpBookingScreen = () => {
      LIVE TRACKING (PROVIDER SIDE)
   ====================================================== */
 
-  useEffect(() => {
-    let subscription: Location.LocationSubscription | null = null;
-    let isMounted = true;
+  // useEffect(() => {
+  //   let subscription: Location.LocationSubscription | null = null;
+  //   let isMounted = true;
 
-    const startTracking = async () => {
-      // 1. Check/Request Permissions
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (!isMounted) return;
+  //   const startTracking = async () => {
+  //     // 1. Check/Request Permissions
+  //     try {
+  //       const { status } = await Location.requestForegroundPermissionsAsync();
+  //       if (!isMounted) return;
 
-        if (status !== 'granted') {
-          console.log('🚫 Location permission denied');
-          return;
-        }
+  //       if (status !== 'granted') {
+  //         console.log('🚫 Location permission denied');
+  //         return;
+  //       }
 
-        // 2. Start Watching
-        console.log("🛰️ Starting Live Tracking for Booking:", bookingId);
-        const sub = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            timeInterval: 5000,
-            distanceInterval: 10,
-          },
-          (location) => {
-            if (!isMounted) return;
-            const { latitude, longitude, heading } = location.coords;
+  //       // 2. Start Watching
+  //       console.log("🛰️ Starting Live Tracking for Booking:", bookingId);
+  //       const sub = await Location.watchPositionAsync(
+  //         {
+  //           accuracy: Location.Accuracy.High,
+  //           timeInterval: 5000,
+  //           distanceInterval: 10,
+  //         },
+  //         (location) => {
+  //           if (!isMounted) return;
+  //           const { latitude, longitude, heading } = location.coords;
 
-            setMyLocation({ latitude, longitude, heading }); // Update local state for Map Modal
+  //           setMyLocation({ latitude, longitude, heading }); // Update local state for Map Modal
 
-            console.log("📍 Location Emitted:", latitude, longitude);
+  //           console.log("📍 Location Emitted:", latitude, longitude);
 
-            // EMIT TO BACKEND
-            socket.emit("send-location", {
-              bookingId,
-              location: {
-                latitude,
-                longitude,
-                heading,
-                eta: "10 mins"
-              }
-            });
-          }
-        );
+  //           // EMIT TO BACKEND
+  //           socket.emit("send-location", {
+  //             bookingId,
+  //             location: {
+  //               latitude,
+  //               longitude,
+  //               heading,
+  //               eta: "10 mins"
+  //             }
+  //           });
+  //         }
+  //       );
 
-        if (isMounted) {
-          subscription = sub;
-        } else {
-          // If unmounted while waiting for promise, remove immediately
-          sub.remove();
-        }
-      } catch (error) {
-        console.log("Error starting location tracking:", error);
-      }
-    };
+  //       if (isMounted) {
+  //         subscription = sub;
+  //       } else {
+  //         // If unmounted while waiting for promise, remove immediately
+  //         sub.remove();
+  //       }
+  //     } catch (error) {
+  //       console.log("Error starting location tracking:", error);
+  //     }
+  //   };
 
-    if (bookingId && !otpVerified) {
-      startTracking();
-    }
+  //   if (bookingId && !otpVerified) {
+  //     startTracking();
+  //   }
 
-    return () => {
-      isMounted = false;
-      console.log("🛑 Stopping Live Tracking");
-      try {
-        if (subscription) {
-          subscription.remove();
-        }
-      } catch (e) {
-        console.log("Error removing location subscription:", e);
-      }
-    };
-  }, [bookingId, otpVerified]);
+  //   return () => {
+  //     isMounted = false;
+  //     console.log("🛑 Stopping Live Tracking");
+  //     try {
+  //       if (subscription) {
+  //         subscription.remove();
+  //       }
+  //     } catch (e) {
+  //       console.log("Error removing location subscription:", e);
+  //     }
+  //   };
+  // }, [bookingId, otpVerified]);
 
+
+  useLiveTracking(bookingId, !otpVerified);
 
 
   /* ======================================================
@@ -363,7 +386,12 @@ export const EmpBookingScreen = () => {
       socket.off("tool-permission-approved");
     };
   }, []);
-
+  
+  useEffect(() => {
+  if (bookingId) {
+    setActiveBookingId(bookingId);
+  }
+}, [bookingId]);
   useEffect(() => {
     const onToolshopAccepted = (payload: any) => {
       if (partsCollected) {
@@ -427,11 +455,8 @@ export const EmpBookingScreen = () => {
       return;
     }
 
-    console.log("📤 Emitting verify-start-otp", {
-      bookingId: bookingId,
-      otp,
-    });
-
+    console.log("📤 Sending OTP:", otp);
+  console.log("📤 bookingId:", bookingId);
     socket.emit("verify-start-otp", {
       bookingId,
       otp,
@@ -440,26 +465,58 @@ export const EmpBookingScreen = () => {
 
 
 
+  // useEffect(() => {
+  //   const onOtpSuccess = async (booking: any) => {
+  //     console.log("✅ OTP VERIFIED SUCCESS", booking);
+  //     // Save active booking
+  //   if (bookingId) {
+  //     await AsyncStorage.setItem("activeBookingId", bookingId);
+  //     console.log("💾 Saved active booking:", bookingId);
+  //   }
+  //   };
+
+  //   const onOtpFailed = () => {
+  //     console.log("❌ OTP VERIFICATION FAILED");
+  //     Alert.alert("Invalid OTP");
+  //   };
+
+  //   socket.on("otp-success", onOtpSuccess);
+  //   socket.on("otp-failed", onOtpFailed);
+
+  //   return () => {
+  //     socket.off("otp-success", onOtpSuccess);
+  //     socket.off("otp-failed", onOtpFailed);
+  //   };
+  // }, []);
+  
+
   useEffect(() => {
-    const onOtpSuccess = (booking: any) => {
-      console.log("✅ OTP VERIFIED SUCCESS", booking);
-      setOtpVerified(true);
-    };
+  const onOtpSuccess = async () => {
+    console.log("✅ OTP VERIFIED SUCCESS");
 
-    const onOtpFailed = () => {
-      console.log("❌ OTP VERIFICATION FAILED");
-      Alert.alert("Invalid OTP");
-    };
+    setOtpVerified(true); // 🔥 IMPORTANT (don't forget this)
 
-    socket.on("otp-success", onOtpSuccess);
-    socket.on("otp-failed", onOtpFailed);
+    if (bookingId) {
+      await AsyncStorage.setItem("activeBookingId", bookingId);
+      console.log("💾 Saved active booking:", bookingId);
+    }
+  };
 
-    return () => {
-      socket.off("otp-success", onOtpSuccess);
-      socket.off("otp-failed", onOtpFailed);
-    };
-  }, []);
+  const onOtpFailed = () => {
+    console.log("❌ OTP VERIFICATION FAILED");
+    Alert.alert("Invalid OTP");
+  };
 
+  socket.on("otp-success", onOtpSuccess);
+
+  // 🔥 FIX: match backend event name
+  socket.on("start-otp-failed", onOtpFailed);
+
+  return () => {
+    socket.off("otp-success", onOtpSuccess);
+    socket.off("start-otp-failed", onOtpFailed);
+  };
+}, [bookingId]);
   useEffect(() => {
     const onReadyForPickup = (payload: any) => {
       // 🔒 HARD GUARD

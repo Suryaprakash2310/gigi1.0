@@ -30,6 +30,7 @@ interface ClientRequest {
   address?: string;
   items?: Item[];
   total?: number;
+  expiresAt?: number;
 }
 
 interface ClientRequestCardProps {
@@ -64,6 +65,10 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
   /** animation */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+  const TOTAL_DURATION = 50000; // 50 sec
+const progressAnim = useRef(new Animated.Value(1)).current;
+const [remaining, setRemaining] = useState<number>(0);
+const [expired, setExpired] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -81,6 +86,35 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
       }),
     ]).start();
   }, []);
+  useEffect(() => {
+  if (!data.expiresAt) return;
+
+  const now = Date.now();
+  const initialRemaining = Math.max(data.expiresAt - now, 0);
+
+  setRemaining(Math.ceil(initialRemaining / 1000));
+
+  // Start animated progress
+  Animated.timing(progressAnim, {
+    toValue: 0,
+    duration: initialRemaining,
+    useNativeDriver: false,
+  }).start();
+
+  const interval = setInterval(() => {
+    const timeLeft = data.expiresAt! - Date.now();
+
+    if (timeLeft <= 0) {
+      clearInterval(interval);
+      setExpired(true);
+      setRemaining(0);
+    } else {
+      setRemaining(Math.ceil(timeLeft / 1000));
+    }
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [data.expiresAt]);
 
   /** TEAM OWNER STATE */
   const [leader, setLeader] = useState<string | null>(null);
@@ -201,6 +235,27 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
         </>
       )}
 
+      {data.expiresAt && !expired && (
+  <View style={styles.timerContainer}>
+    <Animated.View
+      style={[
+        styles.timerBar,
+        {
+          width: progressAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ["0%", "100%"],
+          }),
+          backgroundColor:
+            remaining <= 10 ? "#EF4444" : "#22C55E",
+        },
+      ]}
+    />
+    <Text style={styles.timerText}>
+      {remaining}s remaining
+    </Text>
+  </View>
+)}
+
       {/* ACTIONS */}
       <View style={styles.buttonRow}>
         <TouchableOpacity
@@ -212,23 +267,17 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          activeOpacity={0.8}
-          // disabled={!canAccept}
-          style={[
-            styles.acceptBtn,
-            // !canAccept && { opacity: 0.4 },
-          ]}
-          onPress={() => {
-            // if (role === 'team_owner' && onTeamAccept && leader) {
-            //   onTeamAccept({
-            //     leaderEmpId: leader,
-            //     helperEmpIds: helpers,
-            //   });
-            // } else {
-            onAccept?.();
-            // }
-          }}
-        >
+  activeOpacity={0.8}
+  disabled={expired}
+  style={[
+    styles.acceptBtn,
+    expired && { opacity: 0.4 },
+  ]}
+  onPress={() => {
+    if (expired) return;
+    onAccept?.();
+  }}
+>
           <Text style={styles.btnText}>
             {role === 'team_owner' ? 'Assign & Accept' : 'Accept'}
           </Text>
@@ -310,6 +359,25 @@ const styles = StyleSheet.create({
   modalItem: { flex: 1 },
   modalQty: { width: 40, textAlign: 'center' },
   modalPrice: { width: 60, textAlign: 'right' },
+  timerContainer: {
+  marginTop: 10,
+  backgroundColor: "#E5E7EB",
+  borderRadius: 8,
+  height: 20,
+  overflow: "hidden",
+  justifyContent: "center",
+},
+timerBar: {
+  position: "absolute",
+  left: 0,
+  top: 0,
+  bottom: 0,
+},
+timerText: {
+  textAlign: "center",
+  fontSize: 12,
+  fontWeight: "600",
+},
 });
 
 

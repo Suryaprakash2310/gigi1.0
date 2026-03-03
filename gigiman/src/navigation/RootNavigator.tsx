@@ -8,6 +8,7 @@ import ToolShopStack from './ToolShopStack';
 import { UserRole } from '../utils/enums/CommonEnum';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import BookingSocketListener from '@/listeners/BookingListener';
 
 // import SplashScreen from '../screens/SplashScreen';
 
@@ -27,6 +28,7 @@ export default function RootNavigator() {
   return (
     <SafeAreaProvider>
     <NavigationContainer>
+       <BookingSocketListener />
       {!userToken ? (
         <AuthStack />
       ) : userRole === UserRole.SINGLE_EMPLOYEE || userRole === UserRole.MULTI_EMPLOYEE ? (

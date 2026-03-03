@@ -7,6 +7,10 @@ import { BottomSheetProvider } from './src/context/BottomSheetContext';
 import { ProfileProvider } from '@/context/ProfileContext';
 import { BookingHistoryProvider } from '@/context/BookingHistoryContext';
 import { WalletProvider } from '@/context/WalletContext';
+import { SocketProvider } from '@/socket/SocketProvider';
+import BookingSocketListener from '@/listeners/BookingListener';
+import { ProviderBookingProvider } from '@/context/ProviderBookingContext';
+import { ToolShopProvider } from '@/context/ToolShopContext';
 
 export default function App() {
   return (
@@ -15,9 +19,15 @@ export default function App() {
         <ProfileProvider>
           <BookingHistoryProvider>
             <WalletProvider>
-              <BottomSheetProvider>
-                <RootNavigator />
-              </BottomSheetProvider>
+              <SocketProvider>
+                <ToolShopProvider>
+                  <ProviderBookingProvider>
+                    <BottomSheetProvider>
+                      <RootNavigator />
+                    </BottomSheetProvider>
+                  </ProviderBookingProvider>
+                </ToolShopProvider>
+              </SocketProvider>
             </WalletProvider>
           </BookingHistoryProvider>
         </ProfileProvider>

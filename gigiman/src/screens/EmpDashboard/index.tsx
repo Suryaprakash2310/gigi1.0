@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,352 +7,115 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AppHeader from '../../components/AppHeader';
-import { WorkingModeToggle } from './WorkingModeToggle';
-import { ClientRequestCard } from './ClientRequestCard';
-import { theme } from '../../theme/theme';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
-import { AppStackParamList } from '../../navigation/EmployeeStack';
-import { socket } from '@/socket/socket';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updateActiveStatus } from '@/api/activeStatus';
-import { BottomSheetType, useBottomSheet } from '@/context/BottomSheetContext';
-import { AuthContext } from '@/context/AuthContext';
-import { UserRole } from '@/utils/enums/CommonEnum';
-import { TeamAssignModal } from '@/components/BottomSheets/TeamAssignEmployeeSheet';
-import apiClient from '@/api/client';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AppHeader from "../../components/AppHeader";
+import { WorkingModeToggle } from "./WorkingModeToggle";
+import { ClientRequestCard } from "./ClientRequestCard";
+import { theme } from "../../theme/theme";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import { AppStackParamList } from "../../navigation/EmployeeStack";
+import { updateActiveStatus } from "@/api/activeStatus";
+import { AuthContext } from "@/context/AuthContext";
+import { UserRole } from "@/utils/enums/CommonEnum";
+import { TeamAssignModal } from "@/components/BottomSheets/TeamAssignEmployeeSheet";
+import { useProviderBooking } from "@/context/ProviderBookingContext";
+import { socket } from "@/socket/socket";
 
-type TabNavProp = BottomTabNavigationProp<AppStackParamList, 'BookingStack'>;
-
-const { width } = Dimensions.get('window');
+type TabNavProp = BottomTabNavigationProp<AppStackParamList, "BookingStack">;
+const { width } = Dimensions.get("window");
 
 export const EmpDashboard = () => {
   const navigation = useNavigation<TabNavProp>();
   const insets = useSafeAreaInsets();
-
-  const [workingMode, setWorkingMode] = useState(false);
-  const [clientRequests, setClientRequests] = useState<any[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { openSheet } = useBottomSheet();
   const { userRole } = useContext(AuthContext);
-  const isTeam = userRole === UserRole.MULTI_EMPLOYEE;
-  const [employeeId, setEmployeeId] = useState<string | null>(null);
 
-  // 🔹 Team assignment modal
+  const {
+    clientRequests,
+    workingMode,
+    setWorkingMode,
+    removeBookingRequest,
+  } = useProviderBooking();
+
+  const isTeam = userRole === UserRole.MULTI_EMPLOYEE;
+
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
+  /* ======================================================
+     WORKING MODE TOGGLE (PRODUCTION SAFE)
+  ====================================================== */
   const handleWorkingModeToggle = async (value: boolean) => {
-    console.log("🔁 Toggle pressed:", value);
-
-    // ❗ SAFETY: employeeId must exist
-    if (!employeeId) {
-      Alert.alert("Please wait", "Profile is loading");
-      console.log("❗ employeeId not loaded yet");
-      return;
-    }
-
-    // 1️⃣ IMMEDIATE UI UPDATE (optimistic)
-    setWorkingMode(value);
-
     try {
-      // 2️⃣ Update backend
+      setWorkingMode(value);
       await updateActiveStatus(value);
 
-      // 3️⃣ Socket lifecycle
-      if (value) {
-        if (!socket.connected) socket.connect();
-
-        if (userRole === UserRole.SINGLE_EMPLOYEE) {
-          socket.emit("register-employee", { employeeId });
-        }
-
-        if (userRole === UserRole.MULTI_EMPLOYEE) {
-          if (!socket.connected) {
-            socket.connect();
-          }
-
-          socket.once("connect", () => {
-            console.log("🟢 SOCKET CONNECTED, registering team:", employeeId);
-            socket.emit("register-team", { teamId: employeeId });
-          });
-        }
-
-      }
-
-      else {
-        // 🔴 OFFLINE
-        setClientRequests([]);
-        socket.disconnect();
-        console.log("🔴 Socket disconnected");
+      if (!value) {
+        // Clear UI when offline
+        removeAllRequests();
       }
     } catch (err) {
-      console.error("❌ Toggle failed, reverting", err);
-
-      // 4️⃣ REVERT UI on failure
-      // setWorkingMode(!value);
-
-      Alert.alert(
-        "Error",
-        "Unable to change working mode. Please try again."
-      );
-      console.log("❌ Reverted workingMode to:", !value);
+      Alert.alert("Error", "Unable to change working mode");
+      setWorkingMode(!value);
     }
   };
 
+  const removeAllRequests = () => {
+    clientRequests.forEach((job) => {
+      removeBookingRequest(job.id);
+    });
+  };
+
+  // Only primary employee (team leader) should navigate after assignment
   useEffect(() => {
     const onLeaderOtpReady = ({ bookingId }: any) => {
       console.log("🟢 LEADER OTP READY:", bookingId);
-
       navigation.navigate("BookingStack", {
         screen: "Booking",
         params: { bookingId }
       });
     };
-
     socket.on("leader-otp-ready", onLeaderOtpReady);
-
     return () => {
       socket.off("leader-otp-ready", onLeaderOtpReady);
     };
   }, []);
 
-
-
-
-
-
   /* ======================================================
-     LOAD EMPLOYEE ID ONCE
+     ACCEPT / REJECT
   ====================================================== */
-  useEffect(() => {
-    const loadEmployeeId = async () => {
-      const id = await AsyncStorage.getItem('providerId');
-      setEmployeeId(id);
-    };
-    loadEmployeeId();
-  }, []);
-
-  /* ======================================================
-     SOCKET LISTENERS
-  ====================================================== */
-
-  //   useEffect(() => {
-  //   if (!employeeId || !workingMode) return;
-
-  //   if (!socket.connected) {
-  //     socket.connect();
-  //   }
-
-  //   socket.emit("register-employee", {
-  //     employeeId,
-  //   });
-
-  //   console.log("✅ register-employee emitted:", employeeId);
-  //   return () => {
-  //     console.log("🔴 Socket inactive");
-  //   };
-  // }, [employeeId, workingMode]);
-
-  useEffect(() => {
-    console.log("🟢 DASHBOARD workingMode:", workingMode);
-  }, [workingMode]);
-  useEffect(() => {
-    if (!workingMode) return;
-
-    socket.on("new-booking-request", ({ payload }) => {
-      console.log("📥 New booking request+++:", payload);
-
-      setClientRequests(prev => {
-        if (prev.some(r => r.id === payload.bookingId)) return prev;
-        return [
-          {
-            id: payload.bookingId,
-            name: payload.user.name,
-            work: payload.service,
-            cost: payload.totalPrice,
-            address: payload.address,
-          },
-          ...prev,
-        ];
-      });
-    });
-
-    socket.on("job-assigned", payload => {
-      console.log("📦 Job assigned:", payload.bookingId);
-
-      setClientRequests(prev =>
-        prev.filter(req => req.id !== payload.bookingId)
-      );
-    });
-
-    return () => {
-      socket.off("new-booking-request");
-      socket.off("job-assigned");
-    };
-  }, [workingMode]);
-
-  useEffect(() => {
-    if (userRole !== UserRole.MULTI_EMPLOYEE) return;
-
-    const handleTeamBookingRequest = (payload: any) => {
-      console.log("🔥 TEAM BOOKING RECEIVED IN DASHBOARD:", payload);
-
-      setClientRequests(prev => {
-        if (prev.some(r => r.id === payload.bookingId)) return prev;
-
-        return [
-          {
-            id: payload.bookingId,
-            name: "mock name",
-            work: payload.service,
-            address: payload.address,
-            employeeCount: payload.employeeCount,
-            isTeam: true,
-            teamMembers: payload.teamMembers,
-            teamId: payload.teamId,
-          },
-          ...prev,
-        ];
-      });
-    };
-
-    socket.on("team-booking-request", handleTeamBookingRequest);
-
-    return () => {
-      socket.off("team-booking-request", handleTeamBookingRequest);
-    };
-  }, [userRole]);
-
-  useEffect(() => {
-    const onTeamMemberAssigned = (booking: any) => {
-      console.log("👥 TEAM MEMBER ASSIGNED:", booking);
-
-      // EVERY MEMBER navigates to booking screen
-      navigation.navigate("BookingStack", {
-        screen: "Booking",
-        params: { bookingId: booking._id },
-      });
-    };
-
-    socket.on("team-member-assigned", onTeamMemberAssigned);
-
-    return () => {
-      socket.off("team-member-assigned", onTeamMemberAssigned);
-    };
-  }, []);
-
-
-  //   useEffect(() => {
-  //   if (userRole === UserRole.SINGLE_EMPLOYEE) {
-  //     socket.on("single-booking-request", handleSingleBooking);
-  //   }
-
-  //   if (userRole === UserRole.MULTI_EMPLOYEE) {
-  //     socket.on("team-booking-request", handleTeamBooking);
-  //   }
-
-  //   return () => {
-  //     socket.off("single-booking-request", handleSingleBooking);
-  //     socket.off("team-booking-request", handleTeamBooking);
-  //   };
-  // }, [role]);
-
-
-
-  /* ======================================================
-     ACCEPT / REJECT HANDLERS
-  ====================================================== */
-  // const handleAccept = (job: any) => {
-  //   if (!employeeId) return;
-
-  //   socket.emit("servicer-accept", {
-  //     bookingId: job.id,
-  //     employeeId,
-  //   });
-  //   console.log("✅ servicer-accept emitted:", { bookingId: job.id, employeeId });
-
-  //   Alert.alert("Job Accepted", "Waiting for confirmation...");
-
-  //   // remove from request list
-  //   setClientRequests(prev =>
-  //     prev.filter(req => req.id !== job.id)
-  //   );
-
-  //   navigation.navigate('BookingStack', {
-  //     screen: 'Booking',
-  //     params: {
-  //       bookingId: job.id,
-  //       partsbuyed: false
-  //     },
-  //   });
-
-  //   if (!isTeam) {
-  //     socket.emit("servicer-accept", {
-  //       bookingId: job.id,
-  //       employeeId,
-  //     });
-
-  //     setClientRequests(prev => prev.filter(j => j.id !== job.id));
-
-  //     navigation.navigate("BookingStack", {
-  //       screen: "Booking",
-  //       params: { bookingId: job.id },
-  //     });
-
-  //     return;
-  //   }
-
-  //   // ✅ MULTI EMPLOYEE
-  //   setSelectedJob(job);
-  //   setAssignModalVisible(true);
-  // };
 
   const handleAccept = (job: any) => {
-    if (!employeeId) return;
-
     if (isTeam) {
-      // 🔥 ONLY OPEN MODAL
+      // Team owner: open assignment modal, do not navigate here
       setSelectedJob(job);
       setAssignModalVisible(true);
       return;
     }
 
-    // 🔹 SINGLE EMPLOYEE FLOW
+    // Single employee: accept and navigate directly
     socket.emit("servicer-accept", {
       bookingId: job.id,
-      employeeId,
     });
-
-    setClientRequests(prev => prev.filter(j => j.id !== job.id));
-
+    removeBookingRequest(job.id);
+    console.log("✅ Employee accepted job, navigating to booking:", job.id);
     navigation.navigate("BookingStack", {
       screen: "Booking",
       params: { bookingId: job.id },
     });
-  };
-
+  }
 
   const handleReject = (jobId: string) => {
-    if (!employeeId) return;
-
-    socket.emit('servicer-reject', {
+    socket.emit("servicer-reject", {
       bookingId: jobId,
-      employeeId,
     });
 
-    setClientRequests(prev =>
-      prev.filter(req => req.id !== jobId)
-    );
+    removeBookingRequest(jobId);
   };
 
   /* ======================================================
-       MULTIEMPLOYEE SOCKET HANDLERS
-    ====================================================== */
   // useEffect(() => {
   //   if (!workingMode) return;
 
@@ -373,17 +136,9 @@ export const EmpDashboard = () => {
   //     socket.off("team-booking-request", handleTeamBooking);
   //   };
   // }, [workingMode, userRole]);
-
-
-
-
-
-
-
-
-  /* ======================================================
-     HEADER UI (UNCHANGED)
+     HEADER UI
   ====================================================== */
+
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <WorkingModeToggle
@@ -394,12 +149,15 @@ export const EmpDashboard = () => {
       <View style={styles.summaryContainer}>
         <Text style={styles.greeting}>
           {new Date().getHours() < 12
-            ? 'Good Morning'
+            ? "Good Morning"
             : new Date().getHours() < 18
-              ? 'Good Afternoon'
-              : 'Good Evening'}
+              ? "Good Afternoon"
+              : "Good Evening"}
         </Text>
-        <Text style={styles.subGreeting}>Gigiman Service Providers ..</Text>
+
+        <Text style={styles.subGreeting}>
+          Gigiman Service Providers ..
+        </Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
@@ -408,9 +166,10 @@ export const EmpDashboard = () => {
             </Text>
             <Text style={styles.statLabel}>Active Jobs</Text>
           </View>
+
           <View style={styles.statBox}>
             <Text style={styles.statValue}>
-              {workingMode ? 'ON' : 'OFF'}
+              {workingMode ? "ON" : "OFF"}
             </Text>
             <Text style={styles.statLabel}>Mode</Text>
           </View>
@@ -422,6 +181,7 @@ export const EmpDashboard = () => {
   /* ======================================================
      RENDER
   ====================================================== */
+
   return (
     <View style={styles.container}>
       <AppHeader title="Gigiman" showBack={false} />
@@ -439,46 +199,28 @@ export const EmpDashboard = () => {
       ) : loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{ marginTop: 10 }}>Loading dashboard...</Text>
         </View>
       ) : (
         <FlatList
-          style={{ flex: 1 }}
           data={clientRequests}
-          keyExtractor={item => item.id.toString()}
+          keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
             <ClientRequestCard
-              data={item}
+              data={{ ...item, cost: String(item.cost) }}
               role={item.isTeam ? "team_owner" : "employee"}
               index={index}
               employeeCount={item.employeeCount}
               teamMembers={item.teamMembers}
               onReject={() => handleReject(item.id)}
               onAccept={() => handleAccept(item)}
-            // onTeamAccept={({ leaderEmpId, helperEmpIds }) => {
-            //   // FINAL TEAM ASSIGN
-            //   apiClient.post("/booking/team/assign", {
-            //     bookingId: item.id,
-            //     primaryEmployee: leaderEmpId,
-            //     helpers: helperEmpIds,
-            //   }).then(() => {
-            //     setClientRequests(prev =>
-            //       prev.filter(j => j.id !== item.id)
-            //     );
-
-            //     navigation.navigate("BookingStack", {
-            //       screen: "Booking",
-            //       params: { bookingId: item.id },
-            //     });
-            //   });
-            // }}
             />
-
           )}
-          contentContainerStyle={[styles.scrollArea, { paddingBottom: 80 + insets.bottom }]}
+          contentContainerStyle={{
+            paddingBottom: 80 + insets.bottom,
+          }}
         />
       )}
-      {/* 🔹 TEAM ASSIGN MODAL */}
+
       <TeamAssignModal
         visible={assignModalVisible}
         booking={selectedJob}
@@ -487,20 +229,17 @@ export const EmpDashboard = () => {
           setSelectedJob(null);
         }}
         onSuccess={() => {
-          setClientRequests(prev =>
-            prev.filter(j => j.id !== selectedJob.id)
-          );
-
-          navigation.navigate("BookingStack", {
-            screen: "Booking",
-            params: { bookingId: selectedJob.id },
-          });
+          // Only primary employee (team leader) should navigate to booking
+          removeBookingRequest(selectedJob.id);
+          Alert.alert("Assignment Complete", "Primary employee will be navigated to booking screen.");
+          // Navigation to booking screen should be triggered by the primary employee after assignment
+          setAssignModalVisible(false);
+          setSelectedJob(null);
         }}
       />
     </View>
   );
 };
-
 /* ======================================================
    STYLES (UNCHANGED)
 ====================================================== */
