@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Location from "expo-location";
 import { socket } from "@/socket/socket";
 
@@ -7,6 +7,11 @@ export const useLiveTracking = (
     enabled: boolean = true
 ) => {
     const subscriptionRef = useRef<Location.LocationSubscription | null>(null);
+    const [currentLocation, setCurrentLocation] = useState<{
+        latitude: number;
+        longitude: number;
+        heading: number | null;
+    } | null>(null);
 
     useEffect(() => {
         let subscription: Location.LocationSubscription | null = null;
@@ -26,12 +31,18 @@ export const useLiveTracking = (
                     (location) => {
                         if (!isMounted) return;
 
+                        const { latitude, longitude, heading } = location.coords;
+
+                        // Update local state so the UI can show the marker
+                        setCurrentLocation({ latitude, longitude, heading });
+
+                        // Emit to server for others to track
                         socket.emit("send-location", {
                             bookingId,
                             location: {
-                                latitude: location.coords.latitude,
-                                longitude: location.coords.longitude,
-                                heading: location.coords.heading,
+                                latitude,
+                                longitude,
+                                heading,
                             },
                         });
                     }
@@ -57,4 +68,6 @@ export const useLiveTracking = (
             }
         };
     }, [bookingId, enabled]);
+
+    return currentLocation;
 };

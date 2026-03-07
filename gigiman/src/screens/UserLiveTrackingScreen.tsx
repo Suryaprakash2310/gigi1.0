@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { socket } from "../socket/socket";
 import * as Location from "expo-location";
 import { theme } from "../theme/theme";
+import { useLiveTracking } from "../hooks/useLiveTracking";
 
 export const UserLiveTrackingScreen = () => {
     const navigation = useNavigation();
@@ -14,60 +15,13 @@ export const UserLiveTrackingScreen = () => {
 
     const webViewRef = useRef<WebView>(null);
     const [servicerLocation, setServicerLocation] = useState<{ latitude: number; longitude: number; heading?: number; eta?: string } | null>(null);
-    const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
     const eta = servicerLocation?.eta || "Calculating...";
 
     /* ======================================================
        GET USER'S OWN LOCATION
     ====================================================== */
-    useEffect(() => {
-        let subscription: Location.LocationSubscription | null = null;
-        let isMounted = true;
-
-        const getUserLocation = async () => {
-            try {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== "granted") {
-                    console.log("🚫 Location permission denied");
-                    return;
-                }
-
-                // Get initial location
-                const current = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.Balanced,
-                });
-                if (isMounted) {
-                    setUserLocation({
-                        latitude: current.coords.latitude,
-                        longitude: current.coords.longitude,
-                    });
-                }
-
-                // Watch for updates
-                subscription = await Location.watchPositionAsync(
-                    { accuracy: Location.Accuracy.Balanced, timeInterval: 10000, distanceInterval: 20 },
-                    (loc) => {
-                        if (isMounted) {
-                            setUserLocation({
-                                latitude: loc.coords.latitude,
-                                longitude: loc.coords.longitude,
-                            });
-                        }
-                    }
-                );
-            } catch (err) {
-                console.log("Error getting user location:", err);
-            }
-        };
-
-        getUserLocation();
-
-        return () => {
-            isMounted = false;
-            if (subscription) subscription.remove();
-        };
-    }, []);
+    const userLocation = useLiveTracking(bookingId, true);
 
     /* ======================================================
        SOCKET LISTENER (USER SIDE)

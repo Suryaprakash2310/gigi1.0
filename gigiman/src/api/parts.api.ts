@@ -66,6 +66,13 @@ export const fetchPartRequestById = async (
   return res.data.partRequest;
 };
 
+export const downloadPartBill = async (requestId: string) => {
+  const res = await apiClient.get(`/parts/download-bill/${requestId}`, {
+    responseType: 'blob',
+  });
+  return res.data;
+};
+
 
 // export const requestTool = (data) =>
 //   apiClient.post("/parts/request-tool", data);

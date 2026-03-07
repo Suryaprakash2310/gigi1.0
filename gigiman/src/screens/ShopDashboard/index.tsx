@@ -13,10 +13,11 @@ import AppHeader from "../../components/AppHeader";
 import { RequestCard } from "../../components/toolshop/RequestCard";
 import { socket } from "@/socket/socket";
 import { WorkingModeToggle } from "../EmpDashboard/WorkingModeToggle";
-import { fetchPartRequestById } from "@/api/parts.api";
+import { fetchPartRequestById, downloadPartBill } from "@/api/parts.api";
 import OtpInput from "../../components/OtpInput";
 import { LiveTrackerModal } from "../../components/toolshop/LiveTrackerModal";
 import { useToolShop } from "@/context/ToolShopContext";
+import { API_BASE_URL } from "../../utils/config/env";
 
 export const ToolShopDashboard = () => {
   const {
@@ -65,6 +66,32 @@ export const ToolShopDashboard = () => {
     setTrackModalVisible(true);
   };
 
+  const handleDownloadBill = async (requestId: string) => {
+    try {
+      // For mobile apps, we usually use Linking to open the PDF URL in a browser
+      // or a dedicated file system/PDF viewer.
+      // Since it requires authentication, we'll use a direct link if possible
+      // but the backend needs token.
+
+      const token = await AsyncStorage.getItem('token');
+      const downloadUrl = `${API_BASE_URL}/parts/download-bill/${requestId}?token=${token}`;
+
+      Alert.alert("Downloading Bill", "Your bill is being prepared.");
+
+      // Try to open it. If it fails, the user might need to download manually.
+      import('react-native').then(({ Linking }) => {
+        Linking.openURL(downloadUrl).catch(err => {
+          console.error("Failed to open URL:", err);
+          Alert.alert("Error", "Could not download bill.");
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Something went wrong while downloading the bill.");
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <AppHeader title="Tool Shop Dashboard" />
@@ -105,7 +132,7 @@ export const ToolShopDashboard = () => {
             request={item}
             mode="pickup"
             onVerify={() => openOtp(item)}
-            onTrack={() => openTracker(item)}
+            onDownloadBill={() => handleDownloadBill(item.requestId)}
           />
         )}
         ListEmptyComponent={

@@ -134,7 +134,7 @@ export const EmpBookingScreen = () => {
 
   // ✅ State
   const [otp, setOtp] = useState('');
- // const [otpVerified, setOtpVerified] = useState(false);
+  // const [otpVerified, setOtpVerified] = useState(false);
   const [partsFilled, setPartsFilled] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
   //const [pickupDetails, setPickupDetails] = useState<any | null>(null);
@@ -145,21 +145,22 @@ export const EmpBookingScreen = () => {
   const [partsCollected, setPartsCollected] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const [myLocation, setMyLocation] = useState<any>(null);
+  const [userLiveLocation, setUserLiveLocation] = useState<any>(null);
 
   //const [waitingServiceApproval, setWaitingServiceApproval] = useState(false);
   const {
-  otpVerified,
-  pickupDetails,
-  setPickupDetails,
-  setOtpVerified,
-  waitingApproval,
-  setWaitingApproval,
-  setWaitingServiceApproval,
-  waitingServiceApproval,
-  partRequest,
-  setPartRequest,
-  setActiveBookingId
-} = useProviderBooking();
+    otpVerified,
+    pickupDetails,
+    setPickupDetails,
+    setOtpVerified,
+    waitingApproval,
+    setWaitingApproval,
+    setWaitingServiceApproval,
+    waitingServiceApproval,
+    partRequest,
+    setPartRequest,
+    setActiveBookingId
+  } = useProviderBooking();
 
   //console.log('Booking Screen Params:', { bookingId });
   // ✅ Handle case when parts are returned from Parts screen
@@ -180,17 +181,17 @@ export const EmpBookingScreen = () => {
   //     }
   //   }, [route.params])
   // );
-   useEffect(() => {
-  if (!job) return;
+  useEffect(() => {
+    if (!job) return;
 
-  if (job.status === "in_progress") {
-    console.log("🔄 Job in progress - OTP considered verified");
-    setOtpVerified(true);
-  } else {
-    console.log("🔄 Job not in progress - OTP reset", job.status);
-    setOtpVerified(false);
-  }
-}, [job]);
+    if (job.status === "in_progress") {
+      console.log("🔄 Job in progress - OTP considered verified");
+      setOtpVerified(true);
+    } else {
+      console.log("🔄 Job not in progress - OTP reset", job.status);
+      setOtpVerified(false);
+    }
+  }, [job]);
 
   useEffect(() => {
     if ((route.params as any)?.serviceWaiting) {
@@ -348,7 +349,14 @@ export const EmpBookingScreen = () => {
   // }, [bookingId, otpVerified]);
 
 
-  useLiveTracking(bookingId, !otpVerified);
+  const myLiveLocation = useLiveTracking(bookingId, !otpVerified);
+
+  useEffect(() => {
+    if (bookingId) {
+      console.log("🔌 Joining tracking room (Emp):", bookingId);
+      socket.emit("join-tracking", { bookingId });
+    }
+  }, [bookingId]);
 
 
   /* ======================================================
@@ -386,12 +394,33 @@ export const EmpBookingScreen = () => {
       socket.off("tool-permission-approved");
     };
   }, []);
-  
+
   useEffect(() => {
-  if (bookingId) {
-    setActiveBookingId(bookingId);
-  }
-}, [bookingId]);
+    if (!bookingId) return;
+
+    const handleUserLocationUpdate = (data: any) => {
+      console.log("📍 Servicer received user live location:", data);
+      if (data.bookingId === bookingId && data.latitude && data.longitude) {
+        setUserLiveLocation({
+          latitude: data.latitude,
+          longitude: data.longitude,
+          heading: data.heading
+        });
+      }
+    };
+
+    socket.on("user-location-update", handleUserLocationUpdate);
+
+    return () => {
+      socket.off("user-location-update", handleUserLocationUpdate);
+    };
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (bookingId) {
+      setActiveBookingId(bookingId);
+    }
+  }, [bookingId]);
   useEffect(() => {
     const onToolshopAccepted = (payload: any) => {
       if (partsCollected) {
@@ -456,7 +485,7 @@ export const EmpBookingScreen = () => {
     }
 
     console.log("📤 Sending OTP:", otp);
-  console.log("📤 bookingId:", bookingId);
+    console.log("📤 bookingId:", bookingId);
     socket.emit("verify-start-otp", {
       bookingId,
       otp,
@@ -488,35 +517,35 @@ export const EmpBookingScreen = () => {
   //     socket.off("otp-failed", onOtpFailed);
   //   };
   // }, []);
-  
+
 
   useEffect(() => {
-  const onOtpSuccess = async () => {
-    console.log("✅ OTP VERIFIED SUCCESS");
+    const onOtpSuccess = async () => {
+      console.log("✅ OTP VERIFIED SUCCESS");
 
-    setOtpVerified(true); // 🔥 IMPORTANT (don't forget this)
+      setOtpVerified(true); // 🔥 IMPORTANT (don't forget this)
 
-    if (bookingId) {
-      await AsyncStorage.setItem("activeBookingId", bookingId);
-      console.log("💾 Saved active booking:", bookingId);
-    }
-  };
+      if (bookingId) {
+        await AsyncStorage.setItem("activeBookingId", bookingId);
+        console.log("💾 Saved active booking:", bookingId);
+      }
+    };
 
-  const onOtpFailed = () => {
-    console.log("❌ OTP VERIFICATION FAILED");
-    Alert.alert("Invalid OTP");
-  };
+    const onOtpFailed = () => {
+      console.log("❌ OTP VERIFICATION FAILED");
+      Alert.alert("Invalid OTP");
+    };
 
-  socket.on("otp-success", onOtpSuccess);
+    socket.on("otp-success", onOtpSuccess);
 
-  // 🔥 FIX: match backend event name
-  socket.on("start-otp-failed", onOtpFailed);
+    // 🔥 FIX: match backend event name
+    socket.on("start-otp-failed", onOtpFailed);
 
-  return () => {
-    socket.off("otp-success", onOtpSuccess);
-    socket.off("start-otp-failed", onOtpFailed);
-  };
-}, [bookingId]);
+    return () => {
+      socket.off("otp-success", onOtpSuccess);
+      socket.off("start-otp-failed", onOtpFailed);
+    };
+  }, [bookingId]);
   useEffect(() => {
     const onReadyForPickup = (payload: any) => {
       // 🔒 HARD GUARD
@@ -637,8 +666,8 @@ export const EmpBookingScreen = () => {
 
                   {/* EMBEDDED MAP */}
                   <EmbeddedTrackingMap
-                    location={myLocation}
-                    destination={job?.coordinates ? { latitude: job.coordinates.latitude ?? job.coordinates[1], longitude: job.coordinates.longitude ?? job.coordinates[0] } : undefined}
+                    location={myLiveLocation}
+                    destination={userLiveLocation || (job?.coordinates ? { latitude: job.coordinates.latitude ?? job.coordinates[1], longitude: job.coordinates.longitude ?? job.coordinates[0] } : undefined)}
                     height={250}
                   />
                 </View>
@@ -683,7 +712,7 @@ export const EmpBookingScreen = () => {
                       domainServiceId: job?.domainServiceId,
                     })
                   }
-                widthCount={0.4}
+                  widthCount={0.4}
                 />
 
                 <BottomButton

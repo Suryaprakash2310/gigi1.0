@@ -7,7 +7,7 @@ interface RequestCardProps {
   onAccept?: () => void;
   onReject?: () => void;
   onVerify?: () => void;
-  onTrack?: () => void;
+  onDownloadBill?: () => void;
   mode: "incoming" | "pickup";
 }
 
@@ -17,7 +17,7 @@ export const RequestCard = ({
   onAccept,
   onReject,
   onVerify,
-  onTrack,
+  onDownloadBill,
   mode,
 }: RequestCardProps) => {
   return (
@@ -50,8 +50,8 @@ export const RequestCard = ({
           <TouchableOpacity onPress={onVerify} style={[styles.verify, { flex: 1 }]}>
             <Text style={{ color: "#fff", textAlign: 'center' }}>Verify OTP</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onTrack} style={[styles.track, { flex: 1 }]}>
-            <Text style={{ color: "#fff", textAlign: 'center' }}>Track Live</Text>
+          <TouchableOpacity onPress={onDownloadBill} style={[styles.download, { flex: 1 }]}>
+            <Text style={{ color: "#fff", textAlign: 'center' }}>Download Bill</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -91,8 +91,8 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
   },
-  track: {
-    backgroundColor: "#2196F3", // Blue for tracking
+  download: {
+    backgroundColor: "#2196F3", // Blue for download
     padding: 10,
     borderRadius: 8,
   },
