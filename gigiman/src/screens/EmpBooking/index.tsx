@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { LiveTrackerModal, EmbeddedTrackingMap } from "../../components/toolshop/LiveTrackerModal";
 import {
   View,
@@ -182,17 +183,16 @@ export const EmpBookingScreen = () => {
   //   }, [route.params])
   // );
   useEffect(() => {
-    if (!job) return;
+  if (!job) return;
 
-    if (job.status === "in_progress") {
-      console.log("🔄 Job in progress - OTP considered verified");
-      setOtpVerified(true);
-    } else {
-      console.log("🔄 Job not in progress - OTP reset", job.status);
-      setOtpVerified(false);
-    }
-  }, [job]);
-
+  if (job.status === "assigned" || job.status === "in_progress") {
+    console.log("🔄 Job in progress - OTP considered verified");
+    setOtpVerified(false);
+  } else {
+    console.log("🔄 Job not in progress - OTP reset", job.status);
+    //setOtpVerified(false);
+  }
+}, [job]);
   useEffect(() => {
     if ((route.params as any)?.serviceWaiting) {
       setWaitingServiceApproval(true);
@@ -653,6 +653,28 @@ export const EmpBookingScreen = () => {
               employeeCount={job?.employeeCount || '1'}
               durationInMinutes={job?.durationInMinutes || 'Not Provided'}
             />
+
+            {/* ⚠ Report Issue Button */}
+            <TouchableOpacity 
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#FFF3E0',
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 8,
+                marginVertical: 12,
+                borderWidth: 1,
+                borderColor: '#FFE0B2'
+              }}
+              onPress={() => (navigation as any).navigate("Profile", { screen: "RaiseIssue", params: { bookingId } })}
+            >
+              <Ionicons name="warning" size={20} color="#E65100" />
+              <Text style={{ marginLeft: 8, color: '#E65100', fontWeight: '700', fontSize: 15 }}>
+                Report Issue
+              </Text>
+            </TouchableOpacity>
 
             {/* ✅ OTP Verification Section */}
             {!otpVerified && (

@@ -19,27 +19,33 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
+  // Clear profile immediately when userToken changes (prevents stale data)
+  useEffect(() => {
+    setProfile(null);
+    if (userToken) {
+      loadProfile();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userToken]);
+
   const loadProfile = async () => {
     if (!userToken) {
-      console.log("❌ No token, skipping profile load");
+      setProfile(null);
+      setLoading(false);
       return;
     }
     try {
-      console.log("⏳ Loading profile...");
       setLoading(true);
       const employee = await ProfileAPI.getProfile(userToken);
+      console.log("✅ Profile loaded:", employee);
       setProfile(employee);
-      console.log("✅ Profile Loaded:", employee);
     } catch (err) {
+      setProfile(null);
       console.error("❌ Profile load error:", err);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadProfile();
-  }, [userToken]);
 
   return (
     <ProfileContext.Provider value={{ profile, loading, refreshProfile: loadProfile }}>

@@ -34,6 +34,7 @@ type MenuItem = {
   onPress?: () => void;
 };
 
+// DEPRECATED: Use ProfileScreen.tsx for unified profile UI
 export default function EmployeeProfileScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const { profile, refreshProfile } = useContext(ProfileContext);
@@ -91,13 +92,16 @@ export default function EmployeeProfileScreen({ navigation }: any) {
   const headerProps = {
     scrollY,
     name: profile?.fullname || '',
+    ownerName: profile?.ownerName || '',
     idText: `ID: ${profile?.empId || profile?.TeamId || ''}`,
     subtitle: profile?.role || '',
+    cancelCount: profile?.cancelCount,
+    phoneNo: profile?.phoneNo,
     verified: profile?.verified === "Yes",
     onEdit: () => navigation.navigate("EditProfile"),
   };
 
-  if (loading && !profile) {
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={theme.colors.primary} />

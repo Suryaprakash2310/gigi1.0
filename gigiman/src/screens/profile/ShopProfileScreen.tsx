@@ -24,7 +24,8 @@ import { AuthContext } from '@/context/AuthContext';
 const { width } = Dimensions.get('window');
 
 
-export default function ToolShopProfileScreen({ navigation }: any) {
+// DEPRECATED: Use ProfileScreen.tsx for unified profile UI
+// export default function ToolShopProfileScreen({ navigation }: any) {
   const { profile, loading, refreshProfile } = useContext(ProfileContext);
   const { logout } = useContext(AuthContext);
   const [refreshing, setRefreshing] = useState(false);

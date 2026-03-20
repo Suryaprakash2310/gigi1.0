@@ -96,6 +96,7 @@ export const EmpDashboard = () => {
     }
 
     // Single employee: accept and navigate directly
+    console.log("📤 EMITTING servicer-accept:", job.id);
     socket.emit("servicer-accept", {
       bookingId: job.id,
     });

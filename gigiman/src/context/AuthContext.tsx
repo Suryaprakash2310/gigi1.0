@@ -154,6 +154,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await AsyncStorage.multiRemove(['userToken', 'userRole']);
       setUserToken(null);
       setUserRole(null);
+      // Optionally: clear profile context if needed (handled by ProfileContext effect)
     } catch (error) {
       console.error('Logout error:', error);
     }

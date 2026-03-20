@@ -21,9 +21,13 @@ const COLLAPSE_HEIGHT = 80; // final header height
 interface Props {
   scrollY: Animated.Value;
   name: string;
+  ownerName?: string;
+  shopName?: string;
   idText: string;
   subtitle?: string;
   verified?: boolean;
+  cancelCount?: number;
+  phoneNo?: string;
   avatarUri?: string | null;
   bannerUri?: string | null;
   onEdit?: () => void;
@@ -33,9 +37,13 @@ interface Props {
 export const ProfileHeader: React.FC<Props> = ({
   scrollY,
   name,
+  ownerName,
+  shopName,
   idText,
   subtitle,
-  verified = false,
+  verified,
+  cancelCount,
+  phoneNo,
   avatarUri,
   bannerUri,
   onEdit,
@@ -104,10 +112,17 @@ export const ProfileHeader: React.FC<Props> = ({
         <Animated.View style={[styles.info, { transform: [{ scale: titleScale }] }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={styles.name}>{name}</Text>
+            {ownerName ? <Text style={styles.name}>{ownerName}</Text> : null}
+
             {verified && <Ionicons name="checkmark-circle" size={18} color="#00C853" />}
           </View>
+          {shopName ? <Text style={styles.subtitle}>{shopName}</Text> : null}
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           <Text style={styles.idText}>{idText}</Text>
+          {phoneNo ? <Text style={styles.idText}>{phoneNo}</Text> : null}
+          {typeof cancelCount === 'number' ? (
+            <Text style={styles.idText}>Cancellations: {cancelCount}</Text>
+          ) : null}
         </Animated.View>
 
         <TouchableOpacity onPress={onEdit} style={styles.editBtn}>

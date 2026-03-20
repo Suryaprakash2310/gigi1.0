@@ -7,9 +7,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ToolShopDashboard } from "../screens/ShopDashboard";
 import { ToolShopBooking } from "../screens/ShopBooking";
-import ToolShopProfileScreen from "../screens/profile/ShopProfileScreen";
 import ToolShopProfileStack from "./ToolShopProfileStack";
 import PocketStack from "./PocketStack";
+import EmpProfileStack from "./EmpProfileStack";
 // import TeamDashboardScreen from "@/screens/team/TeamDashboardScreen";
 // import TeamMembersScreen from "@/screens/team/TeamEmployeeScreen";
 
@@ -72,7 +72,7 @@ export default function ToolShopTabNavigator() {
       <Tab.Screen name="Dashboard" component={ToolShopDashboard} />
       {/* <Tab.Screen name="Booking" component={ToolShopBooking} /> */}
       <Tab.Screen name="Pocket" component={PocketStack} />
-      <Tab.Screen name="profileTab" component={ToolShopProfileStack} />
+      <Tab.Screen name="profileTab" component={EmpProfileStack} />
     </Tab.Navigator>
   );
 }
