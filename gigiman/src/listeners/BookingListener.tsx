@@ -1,4 +1,5 @@
 import { useContext, useEffect } from "react";
+import { AppState } from "react-native";
 import { socket } from "@/socket/socket";
 import { useProviderBooking } from "@/context/ProviderBookingContext";
 import { UserRole } from "@/utils/enums/CommonEnum";
@@ -6,6 +7,8 @@ import { AuthContext } from "@/context/AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import { AppStackParamList } from "@/navigation/EmployeeStack";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { playBookingSound, stopBookingSound } from "@/utils/BookingSoundManager";
+
 type TabNavProp = BottomTabNavigationProp<AppStackParamList, "BookingStack">;
 
 export default function BookingSocketListener() {
@@ -14,19 +17,24 @@ export default function BookingSocketListener() {
         removeBookingRequest,
         workingMode,
     } = useProviderBooking();
-      const navigation = useNavigation<TabNavProp>();
-    
+    const navigation = useNavigation<TabNavProp>();
 
     const { userRole } = useContext(AuthContext);
+
     useEffect(() => {
         console.log("🧠 BookingSocketListener mounted");
     }, []);
+
+    /* ======================================================
+       BOOKING REQUEST LISTENERS
+    ====================================================== */
     useEffect(() => {
-        const handleNewBooking = (payload: any) => {
+        const handleNewBooking = async (payload: any) => {
             if (!workingMode) return;
             console.log("🔥 EVENT RECEIVED");
             console.log("📥 New booking request:", payload);
             if (!payload || !payload.bookingId) return;
+
             addBookingRequest({
                 id: payload.bookingId,
                 name: payload.user?.name,
@@ -36,14 +44,20 @@ export default function BookingSocketListener() {
                 employeeCount: payload.employeeCount,
                 expiresAt: Date.now() + 50000,
             });
+
+            // 🔊 Play alert sound on new booking
+            await playBookingSound();
         };
 
-        const handleJobAssigned = (payload: any) => {
+        const handleJobAssigned = async (payload: any) => {
             console.log("📦 Job assigned:", payload.bookingId);
             removeBookingRequest(payload.bookingId);
+
+            // 🔇 Stop sound when job is assigned away
+            await stopBookingSound();
         };
 
-        const handleTeamBooking = (payload: any) => {
+        const handleTeamBooking = async (payload: any) => {
             if (userRole !== UserRole.MULTI_EMPLOYEE) return;
             if (!workingMode) return;
 
@@ -61,6 +75,9 @@ export default function BookingSocketListener() {
                 cost: payload.totalPrice,
                 expiresAt: Date.now() + 50000,
             });
+
+            // 🔊 Play alert sound on team booking
+            await playBookingSound();
         };
 
         socket.on("new-booking-request", handleNewBooking);
@@ -74,28 +91,41 @@ export default function BookingSocketListener() {
         };
     }, [workingMode, userRole]);
 
+    /* ======================================================
+       LEADER OTP READY
+    ====================================================== */
     useEffect(() => {
+        const onLeaderOtpReady = ({ bookingId }: any) => {
+            console.log("🟢 LEADER OTP READY:", bookingId);
 
-  const onLeaderOtpReady = ({ bookingId }: any) => {
-    console.log("🟢 LEADER OTP READY:", bookingId);
+            navigation.navigate("BookingStack", {
+                screen: "Booking",
+                params: { bookingId }
+            });
+        };
 
-    navigation.navigate("BookingStack", {
-      screen: "Booking",
-      params: { bookingId }
-    });
-  };
+        socket.on("leader-otp-ready", onLeaderOtpReady);
 
-  socket.on("leader-otp-ready", onLeaderOtpReady);
+        return () => {
+            socket.off("leader-otp-ready", onLeaderOtpReady);
+        };
+    }, []);
 
-  return () => {
-    socket.off("leader-otp-ready", onLeaderOtpReady);
-  };
+    /* ======================================================
+       APP STATE — Stop sound when app goes to background
+    ====================================================== */
+    useEffect(() => {
+        const subscription = AppState.addEventListener("change", async (nextState) => {
+            if (nextState !== "active") {
+                console.log("📱 App went to background — stopping booking sound");
+                await stopBookingSound();
+            }
+        });
 
-}, []);
-
-
-
-
+        return () => {
+            subscription.remove();
+        };
+    }, []);
 
     return null;
 }

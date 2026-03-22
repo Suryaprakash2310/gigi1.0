@@ -17,6 +17,7 @@ interface Props {
   error?: string | null;
   keyboardType?: KeyboardTypeOptions;
   secureTextEntry?: boolean;
+  maxLength?: number;
 }
 
 const FloatingLabelInput: React.FC<Props> = ({
@@ -27,6 +28,7 @@ const FloatingLabelInput: React.FC<Props> = ({
   error,
   keyboardType = 'default',
   secureTextEntry = false,
+  maxLength,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
@@ -86,7 +88,7 @@ const FloatingLabelInput: React.FC<Props> = ({
           blurOnSubmit
           placeholder={isFocused ? placeholder : ''}
           placeholderTextColor="#999"
-          
+          maxLength={maxLength}
           
         />
       </View>
@@ -110,6 +112,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 18 : 14,
     paddingBottom: Platform.OS === 'ios' ? 10 : 6,
     paddingHorizontal: 16,
+    height: 56,
   },
   input: {
    //height: 100, // or any fixed height you need

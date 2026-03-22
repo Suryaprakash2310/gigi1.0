@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TeamEmployeeScreen } from '@/screens/team/TeamDashboardScreen';
 import { TeamRequestsScreen } from '@/screens/team/TeamRequestsScreen';
@@ -9,6 +10,11 @@ import RecentBookingHistoryScreen from '@/screens/profile/RecentBookingHistorySc
 import SettingsScreen from '@/screens/profile/SettingsScreen';
 import RaiseIssueScreen from '@/screens/profile/RaiseIssueScreen';
 import SupportScreen from '@/screens/profile/SupportScreen';
+import SupportTicketsScreen from '@/screens/profile/SupportTicketsScreen';
+import TicketDetailScreen from '@/screens/profile/TicketDetailScreen';
+import ProfileDetailsScreen from '@/screens/profile/ProfileDetailsScreen';
+import ServiceCategoryScreen from '@/screens/profile/ServiceCategoryScreen';
+import ToolsScreen from '@/screens/profile/ToolsScreen';
 
 export type EmpProfileStackParamList = {
   Profile: undefined;
@@ -20,6 +26,11 @@ export type EmpProfileStackParamList = {
   SettingsScreen: undefined;
   Support: undefined;
   RaiseIssue: { category?: string, bookingId?: string };
+  SupportTickets: undefined;
+  TicketDetail: { ticketId: string };
+  ProfileDetails: undefined;
+  ServiceCategory: undefined;
+  Tools: undefined;
 };
 
 const Stack = createNativeStackNavigator<EmpProfileStackParamList>();
@@ -36,6 +47,11 @@ export default function EmpProfileStack() {
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} />
+      <Stack.Screen name="SupportTickets" component={SupportTicketsScreen} />
+      <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+      <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
+      <Stack.Screen name="ServiceCategory" component={ServiceCategoryScreen} />
+      <Stack.Screen name="Tools" component={ToolsScreen} />
     </Stack.Navigator>
   );
 }

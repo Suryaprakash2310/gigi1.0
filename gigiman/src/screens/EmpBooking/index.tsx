@@ -14,6 +14,7 @@ import {
   Keyboard,
   ScrollView,
   TouchableWithoutFeedback,
+  Vibration,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,6 +34,7 @@ import { AuthContext } from '@/context/AuthContext';
 import { useLiveTracking } from '@/hooks/useLiveTracking';
 import { useProviderBooking } from '@/context/ProviderBookingContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initiateMaskedCall } from '@/api/call.api';
 
 //const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
 
@@ -163,6 +165,55 @@ export const EmpBookingScreen = () => {
     setActiveBookingId
   } = useProviderBooking();
 
+  const [calling, setCalling] = useState(false);
+  const [lastCallTime, setLastCallTime] = useState(0);
+
+  const confirmCall = () => {
+    Alert.alert(
+      "Call Customer?",
+      "This will connect you securely via a masked number for your privacy.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Call", onPress: handleMaskedCall }
+      ]
+    );
+  };
+
+  const handleMaskedCall = async () => {
+    if (!bookingId) return;
+
+    // Cooldown check (30 seconds)
+    const now = Date.now();
+    if (now - lastCallTime < 30000) {
+      const remaining = Math.ceil((30000 - (now - lastCallTime)) / 1000);
+      Alert.alert("Please wait", `Please wait ${remaining} seconds before calling again.`);
+      return;
+    }
+
+    try {
+      setCalling(true);
+      Vibration.vibrate(100);
+      console.log("[API CALL] 📞 Initiating masked call:", bookingId);
+
+      await initiateMaskedCall(bookingId);
+
+      console.log("[API RESPONSE] ✅ Mask call success");
+      setLastCallTime(Date.now());
+      Alert.alert(
+        "Calling...",
+        "Connecting you securely via masked number. Please keep your phone lines free."
+      );
+    } catch (err: any) {
+      console.log("❌ Mask call error:", err?.response?.data || err);
+      Alert.alert(
+        "Call Failed",
+        err?.response?.data?.message || "Unable to initiate call"
+      );
+    } finally {
+      setCalling(false);
+    }
+  };
+
   //console.log('Booking Screen Params:', { bookingId });
   // ✅ Handle case when parts are returned from Parts screen
 
@@ -183,16 +234,16 @@ export const EmpBookingScreen = () => {
   //   }, [route.params])
   // );
   useEffect(() => {
-  if (!job) return;
+    if (!job) return;
 
-  if (job.status === "assigned" || job.status === "in_progress") {
-    console.log("🔄 Job in progress - OTP considered verified");
-    setOtpVerified(false);
-  } else {
-    console.log("🔄 Job not in progress - OTP reset", job.status);
-    //setOtpVerified(false);
-  }
-}, [job]);
+    if (job.status === "assigned" || job.status === "in_progress") {
+      console.log("🔄 Job in progress - OTP considered verified");
+      setOtpVerified(false);
+    } else {
+      console.log("🔄 Job not in progress - OTP reset", job.status);
+      //setOtpVerified(false);
+    }
+  }, [job]);
   useEffect(() => {
     if ((route.params as any)?.serviceWaiting) {
       setWaitingServiceApproval(true);
@@ -202,7 +253,10 @@ export const EmpBookingScreen = () => {
 
   useEffect(() => {
     const loadBooking = async () => {
-
+      if (!bookingId) {
+        setLoading(false);
+        return;
+      }
       try {
         console.log("Started");
         const res = await apiClient.get<{ booking?: any }>(`/booking/${bookingId}`);
@@ -621,10 +675,25 @@ export const EmpBookingScreen = () => {
     );
   }
 
-  if (!bookingId) {
+  if (!bookingId || (!loading && !job)) {
     return (
-      <View style={styles.loaderContainer}>
-        <Text>No booking</Text>
+      <View style={styles.container}>
+        <AppHeader title="Booking" />
+        <View style={styles.noBookingContainer}>
+          <View style={styles.noBookingIconCircle}>
+            <Ionicons name="calendar-outline" size={48} color={theme.colors.primary} />
+          </View>
+          <Text style={styles.noBookingTitle}>No Active Booking</Text>
+          <Text style={styles.noBookingSubtitle}>
+            You don't have any bookings at the moment. New requests will appear here once assigned to you.
+          </Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => navigation.navigate("Home" as any)}
+          >
+            <Text style={styles.refreshButtonText}>Go to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -655,7 +724,7 @@ export const EmpBookingScreen = () => {
             />
 
             {/* ⚠ Report Issue Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -673,6 +742,18 @@ export const EmpBookingScreen = () => {
               <Ionicons name="warning" size={20} color="#E65100" />
               <Text style={{ marginLeft: 8, color: '#E65100', fontWeight: '700', fontSize: 15 }}>
                 Report Issue
+              </Text>
+            </TouchableOpacity>
+
+            {/* 📞 Masked Call Button */}
+            <TouchableOpacity
+              style={[styles.callBtn, calling && { opacity: 0.6 }]}
+              onPress={confirmCall}
+              disabled={calling}
+            >
+              <Ionicons name="call" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+                {calling ? "Connecting..." : "Call Customer"}
               </Text>
             </TouchableOpacity>
 
@@ -708,46 +789,82 @@ export const EmpBookingScreen = () => {
             {/* ✅ After OTP Verified */}
             {/* 1️⃣ Parts / Payment Section */}
             {otpVerified && (
-              <View style={{ marginVertical: 8 }}>
-                <Text style={styles.subTitle}>
-                  Continue your job or complete payment
+              <View style={{ marginVertical: 16 }}>
+                <Text style={[styles.subTitle, { marginBottom: 12 }]}>
+                  Job Actions & Completion
                 </Text>
 
-                <BottomButton
-                  title="Add Parts"
-                  onPress={handlePartsPress}
-                  widthCount={0.4}
-                />
+                {/* 🛠 Action Cards Grid */}
+                <View style={styles.actionGrid}>
+                  <TouchableOpacity 
+                    style={styles.actionCard} 
+                    onPress={handlePartsPress}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.actionCardIcon, { backgroundColor: '#E0F2F1' }]}>
+                      <Ionicons name="construct-sharp" size={24} color="#00796B" />
+                    </View>
+                    <Text style={styles.actionCardTitle}>Add Parts</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.actionCard, waitingServiceApproval && { opacity: 0.6 }]} 
+                    onPress={() =>
+                      !waitingServiceApproval &&
+                      navigation.navigate("AddService", {
+                        bookingId,
+                        domainServiceId: job?.domainServiceId,
+                      })
+                    }
+                    disabled={waitingServiceApproval}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.actionCardIcon, { backgroundColor: '#E3F2FD' }]}>
+                      <Ionicons name="add-circle-sharp" size={26} color="#1976D2" />
+                    </View>
+                    <Text style={styles.actionCardTitle}>
+                      {waitingServiceApproval ? "Waiting..." : "Add Service"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 {waitingServiceApproval && (
                   <View style={styles.waitingBanner}>
+                    <Ionicons name="time-outline" size={18} color="#92400E" style={{ marginRight: 8 }} />
                     <Text style={styles.waitingText}>
                       Waiting for customer approval…
                     </Text>
                   </View>
                 )}
-                <BottomButton
-                  title={waitingServiceApproval ? "Waiting for Approval..." : "Add Service"}
-                  onPress={() =>
-                    !waitingServiceApproval &&
-                    navigation.navigate("AddService", {
-                      bookingId,
-                      domainServiceId: job?.domainServiceId,
-                    })
-                  }
-                  widthCount={0.4}
-                />
 
-                <BottomButton
-                  title="Pay & Complete (Cash)"
-                  onPress={handleCashPayment}
-                  widthCount={0.6}
-                />
+                {/* 💳 Payment & Completion Section */}
+                <View style={styles.paymentSection}>
+                  <Text style={styles.paymentTitle}>Payment & Completion</Text>
+                  
+                  <TouchableOpacity 
+                    style={[styles.paymentButton, styles.cashButton]} 
+                    onPress={handleCashPayment}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.paymentIconCircle}>
+                      <Ionicons name="cash-outline" size={22} color="#166534" />
+                    </View>
+                    <Text style={[styles.paymentButtonText, { color: '#166534' }]}>Pay & Complete (Cash)</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
+                  </TouchableOpacity>
 
-                <BottomButton
-                  title="Pay Online & Complete"
-                  onPress={handleRazorpayPayment}
-                  widthCount={0.6}
-                />
+                  <TouchableOpacity 
+                    style={[styles.paymentButton, styles.onlineButton]} 
+                    onPress={handleRazorpayPayment}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.paymentIconCircle}>
+                      <Ionicons name="card-outline" size={22} color="#1e40af" />
+                    </View>
+                    <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>Pay Online & Complete</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
             {/* ✅ Pickup Details (Shown regardless of OTP status if available) */}
@@ -784,6 +901,90 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f8f4f4ff' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   subTitle: { ...theme.typography.subheading, fontWeight: 'bold' },
+  actionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  actionCardIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  actionCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  paymentSection: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+  },
+  paymentTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1a2e4a',
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+  paymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  cashButton: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#DCFCE7',
+  },
+  onlineButton: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#DBEAFE',
+  },
+  paymentIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    elevation: 1,
+  },
+  paymentButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
   otpContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -796,6 +997,67 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   label: { color: theme.colors.text, ...theme.typography.body },
+  callBtn: {
+    backgroundColor: "#10B981",
+    flexDirection: "row",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  noBookingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingBottom: 80,
+    backgroundColor: '#fff',
+  },
+  noBookingIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#fdf2ee', // light theme primary tint
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  noBookingTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a2e4a',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  noBookingSubtitle: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  refreshButton: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  refreshButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   nextPart: {
     flex: 1,
     backgroundColor: '#fff',

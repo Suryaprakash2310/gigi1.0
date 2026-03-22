@@ -1,5 +1,6 @@
 import { socket } from "@/socket/socket";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { stopBookingSound } from "@/utils/BookingSoundManager";
 
 export interface IncomingBooking {
   id: string;
@@ -93,12 +94,19 @@ const resetBookingState = () => {
   const interval = setInterval(() => {
     const now = Date.now();
 
-    setClientRequests(prev =>
-      prev.filter(job => {
+    setClientRequests(prev => {
+      const filtered = prev.filter(job => {
         if (!job.expiresAt) return true;
         return job.expiresAt > now;
-      })
-    );
+      });
+
+      // 🔇 Stop sound when all requests have expired
+      if (prev.length > 0 && filtered.length === 0) {
+        stopBookingSound();
+      }
+
+      return filtered;
+    });
   }, 1000);
 
   return () => clearInterval(interval);

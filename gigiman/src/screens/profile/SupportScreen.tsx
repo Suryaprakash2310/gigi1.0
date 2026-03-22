@@ -60,6 +60,22 @@ export default function SupportScreen() {
 
           <TouchableOpacity 
             style={styles.actionBtn} 
+            onPress={() => navigation.navigate('SupportTickets' as any)}
+          >
+            <View style={[styles.iconBox, { backgroundColor: '#F3E5F5' }]}>
+              <Ionicons name="copy-outline" size={24} color="#9C27B0" />
+            </View>
+            <View style={styles.actionTextContainer}>
+              <Text style={styles.actionTitle}>My Tickets</Text>
+              <Text style={styles.actionDesc}>View status of your complaints</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#888" />
+          </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          <TouchableOpacity 
+            style={styles.actionBtn} 
             onPress={handleCallSupport}
           >
             <View style={[styles.iconBox, { backgroundColor: '#E8F5E9' }]}>

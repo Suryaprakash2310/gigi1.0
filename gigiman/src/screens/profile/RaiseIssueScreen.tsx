@@ -17,6 +17,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { EmpProfileStackParamList } from '@/navigation/EmpProfileStack';
 import { AuthContext } from '@/context/AuthContext';
 import { ProfileContext } from '@/context/ProfileContext';
+import { TicketAPI } from '@/api/ticket.api';
 
 type RaiseIssueRouteProp = RouteProp<EmpProfileStackParamList, 'RaiseIssue'>;
 
@@ -30,6 +31,7 @@ export default function RaiseIssueScreen() {
 
   const [category, setCategory] = useState<string>(initialCategory);
   const [description, setDescription] = useState('');
+  const [supportMode, setSupportMode] = useState<'Chat' | 'Call' | 'Ticket'>('Chat');
   const [loading, setLoading] = useState(false);
 
   const issueCategories = [
@@ -40,6 +42,15 @@ export default function RaiseIssueScreen() {
     'Safety issue',
     'Other'
   ];
+
+  const categoryMapper: Record<string, string> = {
+    'Customer not available': 'Complaint',
+    'Payment issue': 'Payment Issue',
+    'Wrong booking': 'Complaint',
+    'App issue': 'Technical Issue',
+    'Safety issue': 'Complaint',
+    'Other': 'Query'
+  };
 
   const getPriority = (cat: string) => {
     if (cat === 'Safety issue') return 'HIGH';
@@ -56,28 +67,23 @@ export default function RaiseIssueScreen() {
     setLoading(true);
 
     try {
-      const payload = {
-        providerId: profile?.empId || profile?.TeamId || 'UNKNOWN',
-        bookingId: bookingId || undefined,
-        category: category,
-        description: description,
-        priority: getPriority(category),
-        status: 'OPEN'
+      const payload: any = {
+        message: description || `Issue: ${category}`,
+        category: categoryMapper[category] || 'Complaint',
+        supportType: supportMode,
+        bookingId: bookingId || "",
+        priority: getPriority(category).charAt(0) + getPriority(category).slice(1).toLowerCase(), // Convert to Title Case to match model if needed
       };
 
-      // Mock backend submission logic
-      console.log('--- COMPLAINT SUBMITTED ---');
-      console.log(JSON.stringify(payload, null, 2));
+      const res = await TicketAPI.createTicket(payload);
       
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      Alert.alert(
-        'Complaint Submitted', 
-        'Support team will reach out to you shortly.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-      
+      if (res.success) {
+        Alert.alert(
+          'Complaint Submitted', 
+          'Support team will reach out to you shortly.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Failed to submit complaint. Please try again or use phone support.');
@@ -141,6 +147,36 @@ export default function RaiseIssueScreen() {
             value={description}
             onChangeText={setDescription}
           />
+
+          <Text style={[styles.label, { marginTop: 24 }]}>Support Method <Text style={styles.required}>*</Text></Text>
+          <View style={styles.supportMethodContainer}>
+            {[
+              { id: 'Chat', icon: 'chatbubbles-outline', label: 'Chat' },
+              { id: 'Call', icon: 'call-outline', label: 'Call' },
+              { id: 'Ticket', icon: 'document-text-outline', label: 'Ticket' },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.methodCard,
+                  supportMode === item.id && styles.methodCardSelected
+                ]}
+                onPress={() => setSupportMode(item.id as any)}
+              >
+                <Ionicons 
+                  name={item.icon as any} 
+                  size={24} 
+                  color={supportMode === item.id ? theme.colors.primary : '#666'} 
+                />
+                <Text style={[
+                  styles.methodText,
+                  supportMode === item.id && styles.methodTextSelected
+                ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           <TouchableOpacity 
             style={[styles.submitBtn, loading || !category ? styles.submitBtnDisabled : null]}
@@ -274,5 +310,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  supportMethodContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  methodCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  methodCardSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '08',
+  },
+  methodText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  methodTextSelected: {
+    color: theme.colors.primary,
   },
 });

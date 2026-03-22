@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   Dimensions,
   ActivityIndicator,
+  Vibration,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme/theme";
@@ -67,7 +69,6 @@ const [submitting, setSubmitting] = useState(false);
   
 
   const handleConfirm = async () => {
-    console.log("++++++++++++Confirming part request...");
   if (submitting) return;
 
   try {
@@ -79,7 +80,6 @@ const [submitting, setSubmitting] = useState(false);
       quantity: p.quantity,
       price: p.price,
     }));
-    console.log("++++++++++++Payload:", payload);
 
     await createPartRequest(bookingId, payload, total);
     
@@ -125,8 +125,8 @@ const [submitting, setSubmitting] = useState(false);
     const res = await fetchParts(bookingId, cat._id);
 
     const formatted: PartItem[] = res.parts.map((p: any, index: number) => ({
-      _id: `${cat._id}-${index}`,
-      partName: p.partName,
+      _id: p._id || `${cat._id}-${index}`,
+      partName: p.partsname || p.partName,
       price: Number(p.price) ,
       quantity: 0,
     }));
@@ -155,6 +155,7 @@ const [submitting, setSubmitting] = useState(false);
   // QUANTITY HANDLERS
   // -------------------------
   const increaseQty = (id?: string) => {
+    Vibration.vibrate(50);
     setParts((prev) =>
       prev.map((item) =>
         item._id === id
@@ -165,6 +166,7 @@ const [submitting, setSubmitting] = useState(false);
   };
 
   const decreaseQty = (id?: string) => {
+    Vibration.vibrate(50);
     setParts((prev) =>
       prev.map((item) =>
         item._id === id && item.quantity > 0
@@ -190,26 +192,36 @@ const [submitting, setSubmitting] = useState(false);
   // -------------------------
   const renderItem = ({ item }: { item: PartItem }) => (
     <View style={styles.card}>
-      <Text style={styles.partName}>{item.partName}</Text>
+      <View style={styles.cardInfo}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="cube-outline" size={24} color={theme.colors.primary} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.partName} numberOfLines={1}>{item.partName}</Text>
+          <Text style={styles.priceText}>₹{item.price}</Text>
+        </View>
+      </View>
 
       <View style={styles.quantityRow}>
         <TouchableOpacity
-          style={styles.circleBtn}
+          style={styles.qtyBtn}
           onPress={() => decreaseQty(item._id)}
+          activeOpacity={0.6}
         >
-          <Ionicons name="remove" size={18} color="#000" />
+          <Ionicons name="remove-circle" size={32} color={item.quantity > 0 ? theme.colors.primary : "#CCC"} />
         </TouchableOpacity>
 
-        <Text style={styles.qtyText}>{item.quantity}</Text>
+        <View style={styles.qtyDisplay}>
+          <Text style={styles.qtyText}>{item.quantity}</Text>
+        </View>
 
         <TouchableOpacity
-          style={styles.circleBtn}
+          style={styles.qtyBtn}
           onPress={() => increaseQty(item._id)}
+          activeOpacity={0.6}
         >
-          <Ionicons name="add" size={18} color="#000" />
+          <Ionicons name="add-circle" size={32} color={theme.colors.primary} />
         </TouchableOpacity>
-
-        <Text style={styles.price}>₹{item.price}</Text>
       </View>
     </View>
   );
@@ -233,10 +245,10 @@ const [submitting, setSubmitting] = useState(false);
           horizontal
           keyExtractor={(item) => item._id}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 10 }}
+          contentContainerStyle={styles.categoryList}
           renderItem={({ item }) => (
             <TouchableOpacity
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               style={[
                 styles.categoryPill,
                 selectedCategory === item._id && styles.categoryPillActive,
@@ -277,7 +289,15 @@ const [submitting, setSubmitting] = useState(false);
           keyExtractor={(item) => item._id!}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 150 }}
+          ListEmptyComponent={() => !loadingParts && (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cube-outline" size={60} color="#DDD" />
+              <Text style={styles.emptyText}>
+                {selectedCategory ? "No parts found in this category" : "Please select a category above"}
+              </Text>
+            </View>
+          )}
         />
 
         {/* Floating Button */}
@@ -290,48 +310,60 @@ const [submitting, setSubmitting] = useState(false);
         </View>
       </View>
 
-      {/* Premium Modal */}
       {showConfirmModal && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Confirm Your Order</Text>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Order Summary</Text>
+              <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
+                <Ionicons name="close-circle" size={28} color="#666" />
+              </TouchableOpacity>
+            </View>
 
             <FlatList
               data={selectedParts}
               keyExtractor={(item) => item._id!}
+              style={{ maxHeight: 300 }}
               renderItem={({ item }) => (
-                <View style={styles.modalRow}>
-                  <Text style={styles.modalItem}>{item.partName}</Text>
-                  <Text style={styles.modalQty}>x{item.quantity}</Text>
-                  <Text style={styles.modalPrice}>
-                    ₹{item.price * item.quantity}
-                  </Text>
+                <View style={styles.orderItem}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.orderItemName}>{item.partName}</Text>
+                    <Text style={styles.orderItemPrice}>₹{item.price} each</Text>
+                  </View>
+                  <View style={styles.orderItemQty}>
+                    <Text style={styles.orderItemQtyText}>x{item.quantity}</Text>
+                    <Text style={styles.orderItemTotal}>₹{item.price * item.quantity}</Text>
+                  </View>
                 </View>
               )}
             />
 
-            <View style={styles.modalFooter}>
-              <Text style={styles.modalTotal}>Total: ₹{total}</Text>
+            <View style={styles.modalDivider} />
 
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: "#ccc" }]}
-                  onPress={() => setShowConfirmModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
+            <View style={styles.orderTotalRow}>
+              <Text style={styles.totalLabel}>Grand Total</Text>
+              <Text style={styles.totalAmount}>₹{total}</Text>
+            </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: theme.colors.primary },
-                  ]}
-                  onPress={handleConfirm}
-                >
-                  <Text style={styles.modalButtonText}>Confirm</Text>
-                </TouchableOpacity>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelBtn]}
+                onPress={() => setShowConfirmModal(false)}
+              >
+                <Text style={styles.cancelBtnText}>Edit Order</Text>
+              </TouchableOpacity>
 
-              </View>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.confirmBtn]}
+                onPress={handleConfirm}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.confirmBtnText}>Confirm Order</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -349,7 +381,7 @@ export default PartsScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F8F9FA",
   },
   container: {
     flex: 1,
@@ -357,23 +389,35 @@ const styles = StyleSheet.create({
   },
 
   /* CATEGORY */
+  categoryList: {
+    paddingVertical: 16,
+    height: 70,
+  },
   categoryPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#FFF",
+    borderRadius: 25,
     marginRight: 10,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: "#E5E7EB",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    justifyContent: 'center',
   },
   categoryPillActive: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
+    elevation: 4,
+    shadowOpacity: 0.2,
   },
   categoryPillText: {
     fontSize: 14,
-    color: "#444",
-    fontWeight: "500",
+    color: "#4B5563",
+    fontWeight: "600",
   },
   categoryPillTextActive: {
     color: "#FFF",
@@ -383,121 +427,190 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 12,
-    marginVertical: 8,
+    borderRadius: 16,
+    marginVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    elevation: 3,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  cardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   partName: {
-    ...theme.typography.subheading,
-    color: "#000",
-    marginBottom: 10,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  priceText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   quantityRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
   },
-
-  circleBtn: {
+  qtyBtn: {
+    padding: 2,
+  },
+  qtyDisplay: {
     width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#F7F7F7",
     alignItems: "center",
-    justifyContent: "center",
   },
-
   qtyText: {
     fontSize: 16,
-    fontWeight: "600",
-    width: 35,
-    textAlign: "center",
-  },
-
-  price: {
-    fontSize: 16,
     fontWeight: "700",
-    color: theme.colors.primary,
+    color: '#1F2937',
   },
 
   /* FLOATING BUTTON */
   floatingButtonWrapper: {
     position: "absolute",
-    bottom: 20,
+    bottom: 25,
     left: 0,
     right: 0,
     alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  /* EMPTY STATE */
+  emptyContainer: {
+    marginTop: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 15,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 
   /* MODAL */
   modalOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
   },
-  modalContainer: {
-    width: "90%",
+  modalContent: {
     backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 20,
-    //maxHeight: height * 0.6,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 15,
+    fontSize: 22,
+    fontWeight: "800",
+    color: '#111827',
   },
-  modalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 6,
+  orderItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  modalItem: {
-    flex: 1,
+  orderItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  orderItemPrice: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  orderItemQty: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  orderItemQtyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  orderItemTotal: {
     fontSize: 15,
-    color: "#333",
+    fontWeight: '700',
+    color: theme.colors.primary,
+    marginTop: 2,
   },
-  modalQty: {
-    width: 40,
-    fontWeight: "600",
-    textAlign: "center",
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 16,
   },
-  modalPrice: {
-    width: 60,
-    textAlign: "right",
-    fontWeight: "700",
+  orderTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  modalFooter: {
-    marginTop: 20,
-  },
-  modalTotal: {
+  totalLabel: {
     fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "right",
+    fontWeight: '700',
+    color: '#111827',
+  },
+  totalAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: theme.colors.primary,
   },
   modalButtons: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 12,
   },
-  modalButton: {
+  modalBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
-    marginHorizontal: 5,
+    justifyContent: "center",
   },
-  modalButtonText: {
+  cancelBtn: {
+    backgroundColor: "#F3F4F6",
+  },
+  cancelBtnText: {
+    color: "#4B5563",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  confirmBtn: {
+    backgroundColor: theme.colors.primary,
+    elevation: 4,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  confirmBtnText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 16,

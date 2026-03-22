@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
@@ -124,7 +125,7 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => { inputRefs.current[index] = ref!; }}
+              ref={(ref) => { inputRefs.current[index] = ref! }}
               style={styles.input}
               keyboardType="number-pad"
               maxLength={1}
@@ -136,18 +137,18 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
           ))}
         </View>
 
-        {resendEnabled && (
-          <View style={styles.bottomContainer}>
-            <Text style={styles.text}>Didn't receive code?</Text>
-            {timer > 0 ? (
+        <View style={styles.bottomContainer}>
+          <Text style={styles.text}>Didn't receive code?</Text>
+          {resendEnabled && (
+            timer > 0 ? (
               <Text style={styles.timerText}> Resend 00:{timer < 10 ? `0${timer}` : timer}s</Text>
             ) : (
               <TouchableOpacity onPress={handleResend}>
                 <Text style={styles.resendText}> Resend</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        )}
+            )
+          )}
+        </View>
       </View>
     );
   });

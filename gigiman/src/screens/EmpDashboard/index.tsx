@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
+import { stopBookingSound } from "@/utils/BookingSoundManager";
 import {
   View,
   Text,
@@ -55,6 +56,8 @@ export const EmpDashboard = () => {
       if (!value) {
         // Clear UI when offline
         removeAllRequests();
+        // 🔇 Stop alert sound when going offline
+        await stopBookingSound();
       }
     } catch (err) {
       Alert.alert("Error", "Unable to change working mode");
@@ -87,7 +90,7 @@ export const EmpDashboard = () => {
      ACCEPT / REJECT
   ====================================================== */
 
-  const handleAccept = (job: any) => {
+  const handleAccept = async (job: any) => {
     if (isTeam) {
       // Team owner: open assignment modal, do not navigate here
       setSelectedJob(job);
@@ -101,6 +104,10 @@ export const EmpDashboard = () => {
       bookingId: job.id,
     });
     removeBookingRequest(job.id);
+
+    // 🔇 Stop alert sound on accept
+    await stopBookingSound();
+
     console.log("✅ Employee accepted job, navigating to booking:", job.id);
     navigation.navigate("BookingStack", {
       screen: "Booking",
@@ -108,12 +115,15 @@ export const EmpDashboard = () => {
     });
   }
 
-  const handleReject = (jobId: string) => {
+  const handleReject = async (jobId: string) => {
     socket.emit("servicer-reject", {
       bookingId: jobId,
     });
 
     removeBookingRequest(jobId);
+
+    // 🔇 Stop alert sound on reject
+    await stopBookingSound();
   };
 
   /* ======================================================

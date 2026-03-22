@@ -7,7 +7,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { EmpBookingScreen } from '../screens/EmpBooking/index';
 //import ToolShopScreen from '../screens/ToolShopScreen';
 import { EmpDashboard } from '../screens/EmpDashboard';
-import { theme } from '../theme/theme'; // optional if you have a theme file
+import { theme } from '../theme/theme'; 
 import EmpBookingStack, { BookingStackParamList } from './EmpBookingStack';
 import EmpProfileScreen from '../screens/profile/EmpProfileScreen';
 import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
@@ -22,7 +22,7 @@ export type AppStackParamList = {
     params?: BookingStackParamList[keyof BookingStackParamList];
   };
   Pocket: undefined;
-  Profile: undefined;
+  ProfileTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<AppStackParamList>();
@@ -62,7 +62,7 @@ export default function AppStack() {
               />
             );
           }
-          else if (route.name === 'Profile') {
+          else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person' : 'person-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           }
@@ -73,7 +73,7 @@ export default function AppStack() {
       {/* <Tab.Screen name="Home" component={EmpDashboard} /> */}
       <Tab.Screen name="BookingStack" component={EmpBookingStack} />
       <Tab.Screen name="Pocket" component={PocketStack} />
-      <Tab.Screen name="Profile" component={EmpProfileStack} />
+      <Tab.Screen name="ProfileTab" component={EmpProfileStack} />
     </Tab.Navigator>
   );
 }

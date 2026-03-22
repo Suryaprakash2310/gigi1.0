@@ -129,7 +129,8 @@ export default function AddServiceScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader showBack title="Select Service" />
+      <AppHeader showBack={true}
+        onBackPress={() => navigation.goBack()} title="Select Service" />
 
       <FlatList
         data={categories}

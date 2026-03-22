@@ -78,10 +78,16 @@ export default function PhoneNumberScreen() {
                 <FloatingLabelInput
                   label="Phone Number"
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={(text) => {
+                    const numericText = text.replace(/[^0-9]/g, '');
+                    if (numericText.length <= 10) {
+                      setPhone(numericText);
+                    }
+                  }}
                   keyboardType="numeric"
                   placeholder="Enter your phone number"
                   error={error}
+                  maxLength={10}
                 />
               </View>
             </View>
@@ -107,10 +113,8 @@ const styles = StyleSheet.create({
     flex: 3,
     justifyContent: 'flex-start',
     paddingHorizontal: width * 0.06,
-    gap: 16,
-    //alignItems: 'flex-start'
-    // paddingHorizontal: 24,
-    // paddingTop: 60,
+    gap: 24,
+    paddingTop: 20,
   },
   header: {
     marginBottom: 40,
@@ -130,15 +134,13 @@ const styles = StyleSheet.create({
     ...theme.typography.h1,
   },
   subtitle: {
-    color: theme.colors.text,
+    color: '#666',
     ...theme.typography.body,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 10,
-
-    //marginBottom: 40,
+    marginBottom: 20,
   },
   countryCodeBox: {
     borderWidth: 1,
@@ -146,11 +148,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: Platform.OS === 'ios' ? 14 : 10,
     paddingHorizontal: 16,
-    //paddingBlockStart: 30,
-    height: height * 0.065,
-
+    height: 56,
     marginRight: 10,
-    justifyContent: 'center', // vertically center
+    justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'column'
   },

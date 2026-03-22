@@ -2,14 +2,16 @@ import React, { useContext, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 
 
 import { ProfileContext } from "@/context/ProfileContext";
@@ -28,12 +30,56 @@ export default function EditProfileScreen({ navigation }: any) {
 
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [locationUpdating, setLocationUpdating] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    profile?.services || profile?.toolDomains || []
+  );
+  const [locationStatus, setLocationStatus] = useState<string | null>(
+    profile?.latitude ? 'Location updated ✔' : null
+  );
 
   const fields = EDIT_PROFILE_FIELDS[userRole || ""] || [];
 
   const onChange = (key: string, value: string) => {
     setForm((prev: any) => ({ ...prev, [key]: value }));
   };
+
+  const handleUpdateLocation = async () => {
+    try {
+      setLocationUpdating(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please enable location permissions to update your shop location.');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+      
+      setForm((prev: any) => ({ 
+        ...prev, 
+        latitude: latitude.toString(), 
+        longitude: longitude.toString() 
+      }));
+      setLocationStatus('Location updated ✔');
+      Alert.alert('Success', 'GPS coordinates captured successfully.');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to fetch current location.');
+    } finally {
+      setLocationUpdating(false);
+    }
+  };
+
+  // const toggleCategory = (cat: string) => {
+  //   setSelectedCategories(prev => 
+  //     prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+  //   );
+  // };
+
+  // const availableCategories = userRole === 'TOOL_SHOP' 
+  //   ? ['Hand Tools', 'Power Tools', 'Heavy Machinery', 'Automotive', 'Plumbing', 'Electrical']
+  //   : ['AC Repair', 'Electrical', 'Plumbing', 'Carpentry', 'Painting', 'Cleaning'];
 
   const onSave = async () => {
     const payload: Record<string, any> = {};
@@ -42,15 +88,21 @@ export default function EditProfileScreen({ navigation }: any) {
       const newValue = form[field.key];
       const oldValue = profile[field.key];
 
-      // ✅ only send if changed & not empty
-      if (
-        newValue !== undefined &&
-        newValue !== "" &&
-        newValue !== oldValue
-      ) {
+      if (newValue !== undefined && newValue !== "" && newValue !== oldValue) {
         payload[field.key] = newValue;
       }
     });
+
+    // Handle Latitude/Longitude
+    if (form.latitude && form.latitude !== profile.latitude) payload.latitude = form.latitude;
+    if (form.longitude && form.longitude !== profile.longitude) payload.longitude = form.longitude;
+
+    // Handle Services/Domains
+    if (userRole === 'TOOL_SHOP') {
+      payload.toolDomains = selectedCategories;
+    } else {
+      payload.services = selectedCategories;
+    }
 
     if (Object.keys(payload).length === 0) {
       Alert.alert("No changes", "Nothing to update");
@@ -82,6 +134,19 @@ export default function EditProfileScreen({ navigation }: any) {
       >
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Basic Information</Text>
+          <View style={styles.fieldWrapper}>
+            <View pointerEvents="none">
+              <FloatingLabelInput
+                label="Phone Number"
+                value={profile?.phoneNo || ""}
+                placeholder=""
+                onChangeText={() => {}}
+              />
+            </View>
+            <Text style={styles.readOnlyHint}>Contact support to change phone number</Text>
+          </View>
+
           {fields.map((field) => (
             <View key={field.key} style={styles.fieldWrapper}>
               <FloatingLabelInput
@@ -97,6 +162,36 @@ export default function EditProfileScreen({ navigation }: any) {
             </View>
           ))}
         </View>
+
+        {/* Location Section */}
+        <View style={[styles.card, { marginTop: 20 }]}>
+          <Text style={styles.cardTitle}>Store Location</Text>
+          <Text style={styles.desc}>Update your precise GPS location to help customers find you easily.</Text>
+          
+          <TouchableOpacity 
+            style={[styles.locationBtn, locationUpdating && { opacity: 0.7 }]} 
+            onPress={handleUpdateLocation}
+            disabled={locationUpdating}
+          >
+            {locationUpdating ? (
+              <ActivityIndicator color={theme.colors.primary} />
+            ) : (
+              <>
+                <Ionicons name="location" size={20} color={theme.colors.primary} />
+                <Text style={styles.locationBtnText}>Update Location</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          {locationStatus && <Text style={styles.locationStatus}>{locationStatus}</Text>}
+          {(form.latitude || profile?.latitude) && (
+            <Text style={styles.coords}>
+              Lat: {Number(form.latitude || profile?.latitude).toFixed(4)}, 
+              Long: {Number(form.longitude || profile?.longitude).toFixed(4)}
+            </Text>
+          )}
+        </View>
+
+        
       </ScrollView>
 
       {/* ✅ Bottom Gradient Button */}
@@ -120,14 +215,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f6f7f9",
   },
-
   container: {
     padding: 16,
     paddingBottom: 120,
   },
-
-
-
   card: {
     backgroundColor: theme.colors.background,
     borderRadius: 20,
@@ -140,16 +231,87 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-
   fieldWrapper: {
     marginBottom: 24,
   },
-
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 16,
+  },
+  readOnlyHint: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  desc: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  locationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  locationBtnText: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  locationStatus: {
+    color: theme.colors.success,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  coords: {
+    fontSize: 11,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  chip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  chipSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  chipTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   footer: {
     backgroundColor: theme.colors.background,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    paddingTop: 10, // Reduced top padding for tighter look
+    paddingTop: 10,
     width: '100%',
     alignItems: 'center',
     shadowColor: "#000",
@@ -157,11 +319,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 10,
-    position: 'absolute', // Make it actually sticky at bottom
+    position: 'absolute',
     bottom: 0,
   },
-
-
 });
+
 
 

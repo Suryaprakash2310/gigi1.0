@@ -1,12 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView, ActivityIndicator, Button } from 'react-native';
+import { useAudioGuide } from '../../hooks/useAudioGuide';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, FlatList, Keyboard, TouchableWithoutFeedback, ScrollView, ActivityIndicator, Button, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import FloatingLabelInput from '../../components/TextInput';
 import AppHeader from '../../components/AppHeader';
 import CustomButton from '../../components/Bottom';
 import { theme } from '../../theme/theme';
 import ServiceSelector from './SingleService'; // renamed for consistency
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { UserRole } from '../../utils/enums/CommonEnum';
 import { BottomSheetType, useBottomSheet } from '../../context/BottomSheetContext';
@@ -31,6 +33,7 @@ type EmployeeDetailRouteProp = RouteProp<AuthStackParamList, 'EmployeeDetail'>;
 
 export const SingleEmpDetail = () => {
   const route = useRoute<EmployeeDetailRouteProp>();
+  const navigation = useNavigation<any>();
   const { role } = route.params || {};
   const [currentStep, setCurrentStep] = useState(0);
   const { openSheet } = useBottomSheet();
@@ -38,7 +41,11 @@ export const SingleEmpDetail = () => {
   const [filteredToolShop, setFilteredToolShop] = useState<any[]>([]);
   const [selectedToolShop, setSelectedToolShop] = useState<any[]>([])
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, userRole } = useContext(AuthContext);
+
+  // ─── Audio Guide ───
+  const { isMuted, toggleMute, replayCurrentStep } = useAudioGuide(currentStep, role);
 
   let initialFormData;
   if (role === UserRole.MULTI_EMPLOYEE) {
@@ -50,6 +57,7 @@ export const SingleEmpDetail = () => {
       longitude: null,
       latitude: null,
       aadharNo: '',
+      avatar: null as string | null,
       //employees: [], // list of employees
     };
   } else if (role === UserRole.TOOL_SHOP) {
@@ -65,6 +73,7 @@ export const SingleEmpDetail = () => {
       latitude: null,
       gstNumber: '',
       toolShopDomain: [],
+      avatar: null as string | null,
     };
   } else {
     initialFormData = {
@@ -76,6 +85,7 @@ export const SingleEmpDetail = () => {
       longitude: null,
       latitude: null,
       services: [], // up to 5
+      avatar: null as string | null,
     };
   }
 
@@ -93,8 +103,10 @@ export const SingleEmpDetail = () => {
     phone: '',
     aadharNo: '',
     gstNumber: '',
+    shopName: '',
     toolShops: '',
     services: '',
+    avatar: '',
     //employees: '',
   });
 
@@ -114,70 +126,63 @@ export const SingleEmpDetail = () => {
 
   const submitRegistration = async () => {
     try {
+      setIsSubmitting(true);
+      const data = new FormData();
+
+      // Common fields included in majority of roles
+      if (formData.avatar) {
+        data.append('avatar', {
+          uri: formData.avatar,
+          name: 'avatar.jpg',
+          type: 'image/jpeg',
+        } as any);
+      }
+
       let response;
       if (role === UserRole.SINGLE_EMPLOYEE) {
-        response = await RegisterAPI.singleEmployee({
-          fullname: formData.name,
-          phoneNo: formData.phone,
-          aadhaarNo: formData.aadharNo,
-          // address: {
-          //   city: formData.address, // simplify until you add structured inputs
-          //   state: "Tamil Nadu",
-          //   pincode: "600001",
-          // },
-          // location: {
-          //   type: "Point",
-          //   coordinates: [
-          //     formData.coords?.longitude,
-          //     formData.coords?.latitude,
-          //   ],
-          // },
-          longitude: coords?.longitude,
-          latitude: coords?.latitude,
-
-
-          services: formData.services.map((s: any) => s._id),
-          role: UserRole.SINGLE_EMPLOYEE,
-        });
+        data.append('fullname', formData.name);
+        data.append('phoneNo', formData.phone);
+        data.append('aadhaarNo', formData.aadharNo);
+        data.append('longitude', String(coords?.longitude || ''));
+        data.append('latitude', String(coords?.latitude || ''));
+        data.append('role', UserRole.SINGLE_EMPLOYEE);
+        formData.services.forEach((s: any) => data.append('services', s._id));
+        
+        response = await RegisterAPI.singleEmployee(data);
       } else if (role === UserRole.MULTI_EMPLOYEE) {
-        response = await RegisterAPI.multipleEmployee({
-          storeName: 'no shop',
-          ownerName: formData.ownerName,
-          //gstNo: "9898989898767675",
-          //storeLocation: formData.address,
-          phoneNo: formData.phone,
-          role: UserRole.MULTI_EMPLOYEE,
-          longitude: coords?.longitude,
-          latitude: coords?.latitude,
-          ownerAadhaar: formData.aadharNo,      // MUST match backend enum exactly
-          // members: ["E0019"],                 // array
-          //pendingRequests: ["E0019"],
-          services: formData.services.map((s: any) => s._id),
-        });
+        data.append('storeName', 'no shop');
+        data.append('ownerName', formData.ownerName);
+        data.append('phoneNo', formData.phone);
+        data.append('role', UserRole.MULTI_EMPLOYEE);
+        data.append('longitude', String(coords?.longitude || ''));
+        data.append('latitude', String(coords?.latitude || ''));
+        data.append('ownerAadhaar', formData.aadharNo);
+        formData.services.forEach((s: any) => data.append('services', s._id));
+        
+        response = await RegisterAPI.multipleEmployee(data);
       } else {
-        response = await RegisterAPI.toolShop({
-          shopName: formData.shopName,
-          ownerName: formData.ownerName,
-          gstNo: formData.gstNumber,
-          phoneNo: formData.phone,
-          // location: {
-          //   type: "Point",
-          //   coordinates: [coords?.longitude, coords?.latitude],
-          // },
-          longitude: coords?.longitude,
-          latitude: coords?.latitude,
-          categories: formData.toolShopDomain, // ids
-          role: UserRole.TOOL_SHOP,
-        });
+        data.append('shopName', formData.shopName);
+        data.append('ownerName', formData.ownerName);
+        data.append('gstNo', formData.gstNumber);
+        data.append('phoneNo', formData.phone);
+        data.append('longitude', String(coords?.longitude || ''));
+        data.append('latitude', String(coords?.latitude || ''));
+        data.append('role', UserRole.TOOL_SHOP);
+        formData.toolShopDomain.forEach((id: string) => data.append('categories', id));
+        
+        response = await RegisterAPI.toolShop(data);
       }
+      
       if (response.data?.token) {
         Alert.alert("Registration Successful");
         console.log('Registration Response:', response.data);
         const { token, role, id } = response.data;
         await login(role, token, id);
       }
-    } catch (err) {
+    } catch (err: any) {
       Alert.alert("Error", err.response?.data?.message || "Registration failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -232,6 +237,20 @@ export const SingleEmpDetail = () => {
 
   const removeEmployee = (id: string) => {
     setFormData(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
+  };
+
+  const pickImage = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (!res.canceled) {
+      setFormData({ ...formData, avatar: res.assets[0].uri });
+      setErrors({ ...errors, avatar: '' });
+    }
   };
 
   const handleToolShopPress = (toolshop: any) => {
@@ -305,6 +324,7 @@ export const SingleEmpDetail = () => {
   const validateName = (name: string): string => {
     if (!name.trim()) return 'Name is required';
     if (name.length < 3) return 'Name must be at least 3 characters';
+    if (name.length > 50) return 'Name cannot exceed 50 characters';
     if (!/^[a-zA-Z\s]+$/.test(name)) return 'Only letters and spaces allowed';
     return '';
   };
@@ -364,15 +384,43 @@ export const SingleEmpDetail = () => {
 
 
 
+  const StepHeader = ({ title, subtitle }: { title: string, subtitle: string }) => (
+    <View style={styles.stepHeaderContainer}>
+      <Text style={styles.stepTitle}>{title}</Text>
+      <Text style={styles.stepSubtitle}>{subtitle}</Text>
+    </View>
+  );
+
   // ==================== STEP RENDERING ====================
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
         return (
           <>
+            <StepHeader title="Profile Photo" subtitle="Provide a clear photo of yourself" />
+            <TouchableOpacity 
+              style={styles.imagePicker} 
+              onPress={pickImage}
+            >
+              {formData.avatar ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: formData.avatar }} style={styles.imagePreview} />
+                  <View style={styles.changeImageOverlay}>
+                    <Text style={styles.changeImageText}>Change Photo</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="camera-outline" size={40} color={theme.colors.primary} />
+                  <Text style={styles.imagePlaceholderText}>Upload Profile Photo</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            {errors.avatar ? <Text style={styles.errorText}>{errors.avatar}</Text> : null}
+
             {role === UserRole.SINGLE_EMPLOYEE && (
               <>
-                <Text style={styles.title}>Enter your Name and Age...</Text>
+                <StepHeader title="Personal Details" subtitle="Enter your name and age to continue" />
                 <FloatingLabelInput
                   label="Full Name"
                   value={formData.name}
@@ -396,7 +444,7 @@ export const SingleEmpDetail = () => {
             )}
             {role === UserRole.MULTI_EMPLOYEE && (
               <>
-                <Text style={styles.title}>Enter your Name (Owner name)...</Text>
+                <StepHeader title="Owner Details" subtitle="Enter the shop owner's name" />
                 <FloatingLabelInput
                   label="Owner Name"
                   value={formData.ownerName}
@@ -410,7 +458,7 @@ export const SingleEmpDetail = () => {
             )}
             {role === UserRole.TOOL_SHOP && (
               <>
-                <Text style={styles.title}>Enter your owner name and Shop name...</Text>
+                <StepHeader title="Shop Details" subtitle="Enter your shop and owner name" />
                 <FloatingLabelInput
                   label="Owner Name"
                   value={formData.ownerName}
@@ -425,9 +473,9 @@ export const SingleEmpDetail = () => {
                   value={formData.shopName}
                   onChangeText={(text) => {
                     setFormData({ ...formData, shopName: text });
-                    setErrors({ ...errors, name: validateName(text) });
+                    setErrors({ ...errors, shopName: validateName(text) });
                   }}
-                  error={errors.name}
+                  error={errors.shopName}
                 />
               </>
             )}
@@ -437,7 +485,7 @@ export const SingleEmpDetail = () => {
       case 1:
         return (
           <>
-            <Text style={styles.title}>Enter your Address and Phone number...</Text>
+            <StepHeader title="Contact Info" subtitle="Enter your address and phone number" />
             <FloatingLabelInput
               label="Address"
               value={formData.address}
@@ -484,7 +532,7 @@ export const SingleEmpDetail = () => {
             </TouchableOpacity>
 
             {coords && (
-              <Text style={{ marginTop: 8, color: "textMuted" }}>
+              <Text style={{ marginTop: 8, color: "green", fontSize: 13 }}>
                 Location captured ✔
               </Text>
             )}
@@ -496,7 +544,7 @@ export const SingleEmpDetail = () => {
           <>
             {role === UserRole.SINGLE_EMPLOYEE && (
               <>
-                <Text style={styles.title}>Enter your Aadhar Number...</Text>
+                <StepHeader title="Identity Verification" subtitle="Enter your Aadhar Number" />
                 <FloatingLabelInput
                   label="Aadhar Number"
                   value={formData.aadharNo}
@@ -511,7 +559,7 @@ export const SingleEmpDetail = () => {
             )}
             {role === UserRole.MULTI_EMPLOYEE && (
               <>
-                <Text style={styles.title}>Enter your owner's Aadhar Number...</Text>
+                <StepHeader title="Identity Verification" subtitle="Enter owner's Aadhar Number" />
                 <FloatingLabelInput
                   label="Aadhar Number"
                   value={formData.aadharNo}
@@ -526,7 +574,7 @@ export const SingleEmpDetail = () => {
             )}
             {role === UserRole.TOOL_SHOP && (
               <>
-                <Text style={styles.title}>Enter your GST Number...</Text>
+                <StepHeader title="Tax Information" subtitle="Enter your GST Number" />
                 <FloatingLabelInput
                   label="GST Number"
                   value={formData.gstNumber}
@@ -548,7 +596,7 @@ export const SingleEmpDetail = () => {
           <>
             {role !== UserRole.TOOL_SHOP && (
               <>
-                <Text style={styles.title}>Select Your Service ...</Text>
+                <StepHeader title="Services" subtitle="Select the services you provide" />
                 {errors.services ? (
                   <Text style={{ color: 'red' }}>{errors.services}</Text>
                 ) : null}
@@ -568,7 +616,7 @@ export const SingleEmpDetail = () => {
             )}
             {role === UserRole.TOOL_SHOP && (
               <>
-                <Text style={styles.title}>Select Your Tool Shop Domains ...</Text>
+                <StepHeader title="Tool Shop Domains" subtitle="Select your tool shop specific domains" />
                 {errors.toolShops ? (
                   <Text style={{ color: 'red' }}>{errors.toolShops}</Text>
                 ) : null}
@@ -606,6 +654,10 @@ export const SingleEmpDetail = () => {
     let newErrors = { ...errors };
 
     if (currentStep === 0) {
+      if (!formData.avatar) {
+        newErrors.avatar = 'Profile photo is required';
+      }
+
       if (role === UserRole.SINGLE_EMPLOYEE) {
         newErrors.name = validateName(formData.name);
         newErrors.age = validateAge(formData.age);
@@ -614,7 +666,7 @@ export const SingleEmpDetail = () => {
       }
       else if (role === UserRole.TOOL_SHOP) {
         newErrors.name = validateName(formData.ownerName);
-        newErrors.name = validateName(formData.shopName);
+        newErrors.shopName = validateName(formData.shopName);
       }
     }
     else if (currentStep === 1) {
@@ -659,16 +711,106 @@ export const SingleEmpDetail = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <AppHeader
-        showBack={currentStep > 0}
-        onBackPress={() => setCurrentStep(currentStep - 1)}
+        showBack={true}
+        onBackPress={() => {
+          if (currentStep > 0) {
+            setCurrentStep(currentStep - 1);
+          } else {
+            navigation.goBack();
+          }
+        }}
       />
-      <View style={styles.container}>{renderStepContent()}</View>
+
+      {/* ─── Progress Bar ─── */}
+      <View style={styles.progressContainer}>
+        {[0, 1, 2, 3].map((step) => (
+          <View
+            key={step}
+            style={[
+              styles.progressDot,
+              currentStep >= step && styles.progressDotActive,
+              currentStep === step && styles.progressDotCurrent,
+            ]}
+          />
+        ))}
+      </View>
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {renderStepContent()}
+      </ScrollView>
+
+      {/* ─── Audio Guide Bar ─── */}
+      <View style={styles.audioBar}>
+        <View style={styles.audioBarInner}>
+          {/* Left: Speaker icon with status dot */}
+          <View style={styles.audioSpeakerWrap}>
+            <View style={[
+              styles.audioIconCircle,
+              isMuted && styles.audioIconCircleMuted,
+            ]}>
+              <Ionicons
+                name={isMuted ? 'volume-mute' : 'volume-high'}
+                size={18}
+                color={isMuted ? '#999' : '#fff'}
+              />
+            </View>
+            {!isMuted && <View style={styles.audioLiveDot} />}
+          </View>
+
+          {/* Center: Label */}
+          <View style={styles.audioLabelWrap}>
+            <Text style={styles.audioBarTitle}>
+              {isMuted ? 'Audio Paused' : '🔊 Listening Guide'}
+            </Text>
+            <Text style={styles.audioBarSubtitle}>
+              Step {currentStep + 1} of 4
+            </Text>
+          </View>
+
+          {/* Right: Action buttons */}
+          <View style={styles.audioActions}>
+            <TouchableOpacity
+              style={[
+                styles.audioActionBtn,
+                isMuted && styles.audioActionBtnMuted,
+              ]}
+              onPress={toggleMute}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isMuted ? 'play' : 'pause'}
+                size={16}
+                color={isMuted ? '#888' : theme.colors.primary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.audioActionBtn}
+              onPress={replayCurrentStep}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="refresh"
+                size={16}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
       <View style={styles.footer}>
         <CustomButton
           title={currentStep < 3 ? t('common.save') : 'Register'}
           onPress={handleNext}
           widthCount={0.9}
+          loading={isSubmitting}
+          disabled={isSubmitting}
         />
       </View>
     </KeyboardAvoidingView>
@@ -682,15 +824,57 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
-    paddingHorizontal: 24,
     backgroundColor: '#fff',
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 24,
     gap: 16,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+  },
+  progressDot: {
+    width: 24,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#eee',
+  },
+  progressDotActive: {
+    backgroundColor: '#f5d6c8',
+  },
+  progressDotCurrent: {
+    backgroundColor: theme.colors.primary,
+    width: 32,
   },
   footer: {
     //padding: 24,
     backgroundColor: '#fff',
     alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  stepHeaderContainer: {
+    marginBottom: 8,
+  },
+  stepTitle: {
+    color: '#1a2e4a',
+    fontSize: 28,
+    fontFamily: 'Poppins',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  stepSubtitle: {
+    color: '#666',
+    fontSize: 15,
+    fontFamily: 'Poppins',
+    lineHeight: 22,
+    marginBottom: 6,
   },
   title: {
     color: theme.colors.text,
@@ -738,5 +922,140 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.primary,
   },
+  audioBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: '#fff',
+  },
+  audioBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fdf2ee',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#f5d6c8',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  audioSpeakerWrap: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  audioIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  audioIconCircleMuted: {
+    backgroundColor: '#e0e0e0',
+  },
+  audioLiveDot: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#34C759',
+    borderWidth: 2,
+    borderColor: '#fdf2ee',
+  },
+  audioLabelWrap: {
+    flex: 1,
+  },
+  audioBarTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a2e4a',
+    fontFamily: 'Poppins',
+  },
+  audioBarSubtitle: {
+    fontSize: 11,
+    color: '#888',
+    fontFamily: 'Poppins',
+    marginTop: 1,
+  },
+  audioActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  audioActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+  },
+  audioActionBtnMuted: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+  },
+  imagePicker: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+    backgroundColor: '#F8F9FB',
+    borderWidth: 1,
+    borderColor: '#E1E4E8',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    marginVertical: 12,
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  imagePlaceholderText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  imagePreviewContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+  },
+  changeImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  changeImageText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    marginTop: -8,
+    marginBottom: 8,
+  },
 });
-
