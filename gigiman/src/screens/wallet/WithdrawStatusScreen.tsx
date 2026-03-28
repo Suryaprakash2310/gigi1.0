@@ -9,7 +9,7 @@ export const WithdrawStatusScreen: React.FC = () => {
   const { width } = Dimensions.get('window');
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <AppHeader title="Withdraw Status" showBack />
       <View style={[styles.container, { paddingHorizontal: Math.min(24, width * 0.06) }] }>
         <Ionicons
@@ -38,7 +38,7 @@ export const WithdrawStatusScreen: React.FC = () => {
           </AppText>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

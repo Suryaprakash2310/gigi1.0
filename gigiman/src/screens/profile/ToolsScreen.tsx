@@ -40,7 +40,7 @@ const ToolsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <AppHeader title="Tools & Inventory" showBack onBackPress={() => navigation.goBack()} />
       {loading ? (
         <View style={styles.center}>
@@ -54,7 +54,7 @@ const ToolsScreen = () => {
           contentContainerStyle={styles.listContent}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

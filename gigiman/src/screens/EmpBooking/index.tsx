@@ -233,17 +233,33 @@ export const EmpBookingScreen = () => {
   //     }
   //   }, [route.params])
   // );
-  useEffect(() => {
-    if (!job) return;
+  // useEffect(() => {
+  //   return () => {
+  //     setOtpVerified(false);
+  //     setPickupDetails(null);
+  //     setPartRequest(null);
+  //     setWaitingApproval(false);
+  //     setWaitingServiceApproval(false);
+  //     setPartsCollected(false);
+  //   };
+  // }, [bookingId]);
 
-    if (job.status === "assigned" || job.status === "in_progress") {
-      console.log("🔄 Job in progress - OTP considered verified");
-      setOtpVerified(false);
-    } else {
-      console.log("🔄 Job not in progress - OTP reset", job.status);
-      //setOtpVerified(false);
-    }
-  }, [job]);
+
+  useEffect(() => {
+    const checkOtpStatus = async () => {
+      if (!bookingId) return;
+
+      const active = await AsyncStorage.getItem("activeBookingId");
+
+      if (active === bookingId) {
+        setOtpVerified(true);
+      } else {
+        setOtpVerified(false);
+      }
+    };
+
+    checkOtpStatus();
+  }, [bookingId]);
   useEffect(() => {
     if ((route.params as any)?.serviceWaiting) {
       setWaitingServiceApproval(true);
@@ -301,8 +317,10 @@ export const EmpBookingScreen = () => {
 
         // If shop accepted / ready for pickup
         if (
-          request.status === "READY_FOR_PICKUP" ||
-          (request.status === "ACCEPTED_BY_TOOLSHOP" && request.shopId)
+          (request.status === "READY_FOR_PICKUP" ||
+            request.status === "ACCEPTED_BY_TOOLSHOP") &&
+          request.shopId &&
+          !partsCollected
         ) {
           setPickupDetails({
             requestId: request._id,
@@ -317,6 +335,7 @@ export const EmpBookingScreen = () => {
         if (request.status === "COLLECTED") {
           setPartsCollected(true);
           setPartsFilled(true);
+          setPickupDetails(null);
         }
       }
     };
@@ -737,7 +756,7 @@ export const EmpBookingScreen = () => {
                 borderWidth: 1,
                 borderColor: '#FFE0B2'
               }}
-              onPress={() => (navigation as any).navigate("Profile", { screen: "RaiseIssue", params: { bookingId } })}
+              onPress={() => (navigation as any).navigate("ProfileTab", { screen: "RaiseIssue", params: { bookingId } })}
             >
               <Ionicons name="warning" size={20} color="#E65100" />
               <Text style={{ marginLeft: 8, color: '#E65100', fontWeight: '700', fontSize: 15 }}>
@@ -796,8 +815,8 @@ export const EmpBookingScreen = () => {
 
                 {/* 🛠 Action Cards Grid */}
                 <View style={styles.actionGrid}>
-                  <TouchableOpacity 
-                    style={styles.actionCard} 
+                  <TouchableOpacity
+                    style={styles.actionCard}
                     onPress={handlePartsPress}
                     activeOpacity={0.7}
                   >
@@ -807,8 +826,8 @@ export const EmpBookingScreen = () => {
                     <Text style={styles.actionCardTitle}>Add Parts</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
-                    style={[styles.actionCard, waitingServiceApproval && { opacity: 0.6 }]} 
+                  <TouchableOpacity
+                    style={[styles.actionCard, waitingServiceApproval && { opacity: 0.6 }]}
                     onPress={() =>
                       !waitingServiceApproval &&
                       navigation.navigate("AddService", {
@@ -840,9 +859,9 @@ export const EmpBookingScreen = () => {
                 {/* 💳 Payment & Completion Section */}
                 <View style={styles.paymentSection}>
                   <Text style={styles.paymentTitle}>Payment & Completion</Text>
-                  
-                  <TouchableOpacity 
-                    style={[styles.paymentButton, styles.cashButton]} 
+
+                  <TouchableOpacity
+                    style={[styles.paymentButton, styles.cashButton]}
                     onPress={handleCashPayment}
                     activeOpacity={0.8}
                   >
@@ -853,8 +872,8 @@ export const EmpBookingScreen = () => {
                     <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
                   </TouchableOpacity>
 
-                  <TouchableOpacity 
-                    style={[styles.paymentButton, styles.onlineButton]} 
+                  <TouchableOpacity
+                    style={[styles.paymentButton, styles.onlineButton]}
                     onPress={handleRazorpayPayment}
                     activeOpacity={0.8}
                   >
@@ -868,7 +887,7 @@ export const EmpBookingScreen = () => {
               </View>
             )}
             {/* ✅ Pickup Details (Shown regardless of OTP status if available) */}
-            {pickupDetails && (
+            {pickupDetails && !partsCollected && (
               <View style={[styles.shopContainer, { marginTop: 12 }]}>
                 <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>Parts Ready for Pickup 🏪</Text>
                 <Text style={styles.shopName}>Shop: {pickupDetails.shop?.name}</Text>

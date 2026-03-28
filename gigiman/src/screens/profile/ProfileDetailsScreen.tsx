@@ -44,7 +44,7 @@ const ProfileDetailsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <AppHeader
         title="Profile Details"
@@ -105,7 +105,7 @@ const ProfileDetailsScreen = () => {
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

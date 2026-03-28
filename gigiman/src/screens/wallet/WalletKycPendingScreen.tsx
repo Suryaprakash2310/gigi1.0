@@ -10,7 +10,7 @@ import { theme } from "@/theme/theme";
 export const WalletKycPendingScreen = () => {
     const { setKycStatus } = useWallet();
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <AppHeader title="KYC Status" showBack />
       <View style={styles.container}>
         <Ionicons
@@ -45,7 +45,7 @@ export const WalletKycPendingScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

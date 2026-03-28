@@ -9,7 +9,7 @@ export const WalletKycIntroScreen = () => {
   const navigation = useNavigation<any>();
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       <AppHeader title="KYC" showBack />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <AppText style={styles.title}>
@@ -33,7 +33,7 @@ export const WalletKycIntroScreen = () => {
           <AppText style={styles.btnText}>Start KYC</AppText>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

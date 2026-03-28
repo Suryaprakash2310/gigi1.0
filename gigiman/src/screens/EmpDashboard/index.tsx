@@ -127,26 +127,7 @@ export const EmpDashboard = () => {
   };
 
   /* ======================================================
-  // useEffect(() => {
-  //   if (!workingMode) return;
-
-  //   const handleTeamBooking = (payload: any) => {
-  //     if (userRole !== UserRole.MULTI_EMPLOYEE) return;
-
-  //     openSheet(BottomSheetType.TEAM_ASSIGN_EMPLOYEES, {
-  //       bookingId: payload.bookingId,
-  //       teamId: payload.teamId,
-  //       employeeCount: payload.employeeCount,
-  //       teamMembers: payload.teamMembers,
-  //     });
-  //   };
-
-  //   socket.on("team-booking-request", handleTeamBooking);
-
-  //   return () => {
-  //     socket.off("team-booking-request", handleTeamBooking);
-  //   };
-  // }, [workingMode, userRole]);
+  
      HEADER UI
   ====================================================== */
 

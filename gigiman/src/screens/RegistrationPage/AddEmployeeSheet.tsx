@@ -128,7 +128,7 @@ export const AddEmployeeSheet: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.safe}>
       {/* Keep header and search static, list scrolls between */}
       <KeyboardAvoidingView
         behavior={IS_IOS ? 'padding' : undefined}
@@ -191,7 +191,7 @@ export const AddEmployeeSheet: React.FC = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

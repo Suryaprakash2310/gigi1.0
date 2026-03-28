@@ -33,39 +33,7 @@ export default function OtpLoginScreen() {
 
   const handleOtpComplete = (enteredOtp: string) => setOtp(enteredOtp);
 
-  // const handleVerifyOtp = async () => {
-  //   if (otp.length !== 4) {
-  //     Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');
-  //     return;
-  //   }
-
-  //   try {
-  //     setLoading(true);
-  //     console.log(otp,"otp")
-  //     console.log(phone,"phone")
-  //     const res = await AuthAPI.verifyOtp(phone.trim(), otp.trim());
-
-  //     if (res?.token) {
-  //       // ✅ Trigger global login
-  //       //await login(res.role, res.token);
-  //       await login(res.role)
-  //       console.log('Login Successful ✅', `Welcome ${res.role}`)
-
-  //       Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
-  //       await login(res.role, res.token)
-  //       // Navigation automatically handled by RootNavigator
-  //     } else {
-  //       Alert.alert('Failed', 'Invalid OTP or unauthorized user.');
-  //       console.log('Failed', 'Invalid OTP or unauthorized user.')
-  //       otpRef.current?.reset();
-  //     }
-  //   } catch (error: any) {
-  //     Alert.alert('Error', error.response?.data?.message || 'OTP verification failed');
-  //     console.log('Error', error.response?.data?.message || 'OTP verification failed')
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  
   const handleVerifyOtp = async () => {
   if (otp.length !== 4) {
     Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');

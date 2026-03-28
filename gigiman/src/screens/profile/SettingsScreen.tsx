@@ -32,7 +32,7 @@ export default function SettingsScreen() {
   const allOptions = [...settingsOptions, ...roleOptions];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
         <AppHeader showBack title="Settings" onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={styles.container}>
         
@@ -50,7 +50,7 @@ export default function SettingsScreen() {
         ))}
         
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
