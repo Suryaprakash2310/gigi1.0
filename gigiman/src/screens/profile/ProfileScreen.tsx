@@ -22,6 +22,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { ProfileContext } from "@/context/ProfileContext";
 import { AuthContext } from "@/context/AuthContext";
 import { UserRole } from "@/utils/enums/CommonEnum";
+import AppHeader from "@/components/AppHeader";
 
 const { width } = Dimensions.get('window');
 
@@ -76,27 +77,21 @@ const ProfileScreen = ({ navigation }: any) => {
     );
   }
 
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', paddingHorizontal: 24 }}>
-        <Text style={{ color: '#d9534f', fontWeight: '700', fontSize: 16, marginBottom: 10 }}>{error}</Text>
-        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#6c63ff', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, marginTop: 18 }} onPress={onRefresh}>
-          <Text style={{ color: '#fff', fontWeight: '700', marginLeft: 8, fontSize: 15 }}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', paddingHorizontal: 24 }}>
-        <Text style={{ color: '#222', fontWeight: '600' }}>No profile data found.</Text>
-        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#6c63ff', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, marginTop: 18 }} onPress={onRefresh}>
-          <Text style={{ color: '#fff', fontWeight: '700', marginLeft: 8, fontSize: 15 }}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const renderOfflineBanner = () => {
+    if (error || !profile) {
+      return (
+        <View style={{ backgroundColor: '#ffebee', padding: 12, alignItems: 'center', marginHorizontal: 16, borderRadius: 8, marginTop: 16 }}>
+          <Text style={{ color: '#d32f2f', fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+            {error || 'Offline mode. Profile data unavailable.'}
+          </Text>
+          <TouchableOpacity onPress={onRefresh} style={{ marginTop: 8, backgroundColor: '#d32f2f', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 6 }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return null;
+  };
 
 
   // TOOL_SHOP PROFILE UI
@@ -106,21 +101,22 @@ const ProfileScreen = ({ navigation }: any) => {
       { key: 'tools', icon: 'construct-outline', title: 'Tools & Domains', subtitle: 'Manage listings', onPress: () => navigation.navigate('Tools') },
       { key: 'pending', icon: 'time-outline', title: 'Pending Requests', subtitle: 'New orders', onPress: () => navigation.navigate('PendingRequests') },
       { key: 'orders', icon: 'list-outline', title: 'Completed Orders', subtitle: 'History', onPress: () => navigation.navigate('RecentBookingHistory') },
-      { key: 'inventory', icon: 'layers-outline', title: 'Inventory', onPress: () => navigation.navigate('Inventory') },
-      { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', onPress: () => navigation.navigate('ShopEarnings') },
+      // { key: 'inventory', icon: 'layers-outline', title: 'Inventory', onPress: () => navigation.navigate('Inventory') },
+      // { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', onPress: () => navigation.navigate('ShopEarnings') },
       { key: 'support', icon: 'help-circle-outline', title: 'Support', onPress: () => navigation.navigate('Support') },
       { key: 'settings', icon: 'settings-outline', title: 'Settings', onPress: () => navigation.navigate('SettingsScreen') },
       { key: 'logout', icon: 'log-out-outline', title: 'Logout' },
     ];
-    const headerProps = {
-      scrollY,
-      name: profile.shopName || profile.ownerName,
-      subtitle: 'Tool Shop',
-      onEdit: () => navigation.navigate("EditProfile"),
-      avatar: profile.avatar || undefined,
-    };
+    // const headerProps = {
+    //   scrollY,
+    //   name: profile.shopName || profile.ownerName,
+    //   subtitle: 'Tool Shop',
+    //   onEdit: () => navigation.navigate("EditProfile"),
+    //   avatar: profile.avatar || undefined,
+    // };
     return (
       <View style={styles.safeArea}>
+        <AppHeader title="Profile" />
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <Animated.ScrollView
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -138,12 +134,14 @@ const ProfileScreen = ({ navigation }: any) => {
                source={(headerProps.avatar ? { uri: headerProps.avatar } : require('@/assets/images/placeholder.png')) as ImageSourcePropType} 
                style={styles.simpleAvatar} 
              /> */}
-            <View style={styles.headerTextCol}>
+            {/* <View style={styles.headerTextCol}>
               <Text style={styles.simpleName}>{headerProps.name}</Text>
               <Text style={styles.simpleRole}>{headerProps.subtitle}</Text>
-            </View>
-            {profile.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} />}
+            </View> */}
+            {profile?.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} />}
           </View>
+
+          {renderOfflineBanner()}
 
           {/* Menu Card */}
           <View style={[styles.cardShadow, { marginTop: 10 }]}>
@@ -199,19 +197,20 @@ const ProfileScreen = ({ navigation }: any) => {
       { key: 'services', icon: 'construct-outline', title: 'Service Categories', subtitle: 'Manage skills', onPress: () => navigation.navigate('ServiceCategory') },
       { key: 'team', icon: 'people-outline', title: 'Team Management', onPress: () => userRole === UserRole.MULTI_EMPLOYEE ? navigation.navigate('team') : navigation.navigate('TeamRequest') },
       { key: 'bookings', icon: 'calendar-outline', title: "Booking History", onPress: () => navigation.navigate("RecentBookingHistory") },
-      { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', onPress: () => navigation.navigate('Earnings') },
-      { key: 'bank', icon: 'card-outline', title: 'Banking', onPress: () => navigation.navigate('Banking') },
+      // { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', onPress: () => navigation.navigate('Earnings') },
+      // { key: 'bank', icon: 'card-outline', title: 'Banking', onPress: () => navigation.navigate('Banking') },
       { key: 'support', icon: 'help-circle-outline', title: 'Support', onPress: () => navigation.navigate('Support') },
       { key: 'settings', icon: 'settings-outline', title: 'Settings', onPress: () => navigation.navigate('SettingsScreen') },
       { key: 'logout', icon: 'log-out-outline', title: 'Logout' },
     ];
-    const headerProps = {
-      name: profile?.fullname || profile?.ownerName || '',
-      subtitle: userRole === UserRole.MULTI_EMPLOYEE ? 'Service Team' : 'Service Provider',
-      avatar: profile?.avatar,
-    };
+    // const headerProps = {
+    //   name: profile?.fullname || profile?.ownerName || '',
+    //   subtitle: userRole === UserRole.MULTI_EMPLOYEE ? 'Service Team' : 'Service Provider',
+    //   avatar: profile?.avatar,
+    // };
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
+        <AppHeader title="Profile"  />
         <Animated.ScrollView
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
@@ -223,12 +222,14 @@ const ProfileScreen = ({ navigation }: any) => {
               source={(headerProps.avatar ? { uri: headerProps.avatar } : require('@/assets/images/placeholder.png')) as ImageSourcePropType}
               style={styles.simpleAvatar}
             /> */}
-            <View style={styles.headerTextCol}>
+            {/* <View style={styles.headerTextCol}>
               <Text style={styles.simpleName}>{headerProps.name}</Text>
               <Text style={styles.simpleRole}>{headerProps.subtitle}</Text>
-            </View>
+            </View> */}
             {profile?.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} />}
           </View>
+
+          {renderOfflineBanner()}
 
           <View style={[styles.cardShadow, { marginTop: 10 }]}>
             <LinearGradientBox>
@@ -272,7 +273,7 @@ const ProfileScreen = ({ navigation }: any) => {
             }}
           />
         </Animated.ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
