@@ -80,9 +80,12 @@ export default function OtpLoginScreen() {
 
   const handleResend = async () => {
     try {
-      await AuthAPI.sendOtp(phone);
-      Alert.alert('Success', 'OTP resent successfully');
-      otpRef.current?.reset();
+      const res: any = await AuthAPI.sendOtp(phone);
+      if (res?.otp && otpRef.current) {
+        otpRef.current.setValue(String(res.otp));
+      } else {
+        Alert.alert('Success', 'OTP resent successfully');
+      }
     } catch {
       Alert.alert('Error', 'Failed to resend OTP');
     }

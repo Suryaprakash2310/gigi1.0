@@ -33,10 +33,9 @@ export default function PhoneNumberScreen() {
     try {
       setLoading(true);
       const res = await AuthAPI.sendOtp(phone.trim());
-      alert('OTP sent successfully::::' + res.otp);
       console.log('OTP Response:', res);
-      navigation.navigate('otp', { phone });
-      //navigation.navigate('otp', { phone });
+      // Auto-fill the OTP in the next screen instead of showing an alert
+      navigation.navigate('otp', { phone, otp: res.otp });
     } catch (e) {
       alert('Failed to send OTP');
     } finally {
