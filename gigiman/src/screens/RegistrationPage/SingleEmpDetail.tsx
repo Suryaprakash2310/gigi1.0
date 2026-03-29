@@ -107,14 +107,101 @@ export const SingleEmpDetail = () => {
     toolShops: '',
     services: '',
     avatar: '',
-    //employees: '',
+    location: '',
   });
+
+  // ─── 2️⃣ STEP-BASED VALIDATION SYSTEM ───
+  const getStepErrors = (step: number, data: any, userRole: string) => {
+    // ALWAYS return a fresh error object
+    const newErrors = {
+      name: '',
+      age: '',
+      address: '',
+      phone: '',
+      aadharNo: '',
+      gstNumber: '',
+      shopName: '',
+      toolShops: '',
+      services: '',
+      avatar: '',
+      location: '',
+    };
+
+    if (step === 0) {
+      if (!data.avatar) newErrors.avatar = 'Profile photo is required';
+
+      if (userRole === UserRole.SINGLE_EMPLOYEE) {
+        newErrors.name = validateName(data.name);
+        newErrors.age = validateAge(data.age);
+      } else if (userRole === UserRole.MULTI_EMPLOYEE) {
+        newErrors.name = validateName(data.ownerName);
+      } else if (userRole === UserRole.TOOL_SHOP) {
+        newErrors.name = validateName(data.ownerName);
+        newErrors.shopName = validateName(data.shopName);
+      }
+    } else if (step === 1) {
+      newErrors.address = validateAddress(data.address);
+      newErrors.phone = validatePhone(data.phone);
+      if (!coords) {
+        newErrors.location = 'Please detect your location to continue';
+      }
+    } else if (step === 2) {
+      if (userRole === UserRole.SINGLE_EMPLOYEE || userRole === UserRole.MULTI_EMPLOYEE) {
+        newErrors.aadharNo = validateAadhar(data.aadharNo);
+      } else if (userRole === UserRole.TOOL_SHOP) {
+        newErrors.gstNumber = validateGST(data.gstNumber);
+      }
+    } else if (step === 3) {
+      if (userRole === UserRole.TOOL_SHOP) {
+        newErrors.toolShops = validateToolShops(data.toolShopDomain);
+      } else {
+        newErrors.services = validateServices(data.services);
+      }
+    }
+
+    return newErrors;
+  };
+
+  // ─── 4️⃣ NAVIGATION CONTROL ───
+  const handleNext = () => {
+    const stepErrors = getStepErrors(currentStep, formData, role);
+    setErrors(stepErrors);
+
+    const hasErrors = Object.values(stepErrors).some((err) => err !== '');
+    if (hasErrors) return;
+
+    if (currentStep < 3) {
+      setCurrentStep((prev) => prev + 1);
+    } else {
+      submitRegistration();
+    }
+  };
+
+  // ─── 5️⃣ BACK BUTTON FIX ───
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  // Helper to clear error when user types
+  const updateField = (field: string, value: any, validationFn?: (v: any) => string) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
+    if (validationFn) {
+      setErrors((prev) => ({ ...prev, [field]: validationFn(value) }));
+    } else {
+      setErrors((prev) => ({ ...prev, [field]: '' }));
+    }
+  };
 
   const detectLocation = async () => {
     try {
       setLocLoading(true);
       const location = await getCurrentLocation();
       setCoords(location);
+      setErrors((prev) => ({ ...prev, location: '' }));
       Alert.alert("Location detected");
       console.log("Detected Location:", location);
     } catch (err: any) {
@@ -140,39 +227,41 @@ export const SingleEmpDetail = () => {
 
       let response;
       if (role === UserRole.SINGLE_EMPLOYEE) {
-        data.append('fullname', formData.name);
-        data.append('phoneNo', formData.phone);
-        data.append('aadhaarNo', formData.aadharNo);
-        data.append('longitude', String(coords?.longitude || ''));
-        data.append('latitude', String(coords?.latitude || ''));
-        data.append('role', UserRole.SINGLE_EMPLOYEE);
-        formData.services.forEach((s: any) => data.append('services', s._id));
-        
-        response = await RegisterAPI.singleEmployee(data);
+        response = await RegisterAPI.singleEmployee({
+          fullname: formData.name,
+          phoneNo: formData.phone,
+          aadhaarNo: formData.aadharNo,
+          longitude: coords?.longitude,
+          latitude: coords?.latitude,
+          services: formData.services.map((s: any) => s._id),
+          role: UserRole.SINGLE_EMPLOYEE,
+        });
       } else if (role === UserRole.MULTI_EMPLOYEE) {
-        data.append('storeName', 'no shop');
-        data.append('ownerName', formData.ownerName);
-        data.append('phoneNo', formData.phone);
-        data.append('role', UserRole.MULTI_EMPLOYEE);
-        data.append('longitude', String(coords?.longitude || ''));
-        data.append('latitude', String(coords?.latitude || ''));
-        data.append('ownerAadhaar', formData.aadharNo);
-        formData.services.forEach((s: any) => data.append('services', s._id));
-        
-        response = await RegisterAPI.multipleEmployee(data);
+        response = await RegisterAPI.multipleEmployee({
+          storeName: 'no shop',
+          ownerName: formData.ownerName,
+          //gstNo: "9898989898767675",
+          //storeLocation: formData.address,
+          phoneNo: formData.phone,
+          role: UserRole.MULTI_EMPLOYEE,
+          longitude: coords?.longitude,
+          latitude: coords?.latitude,
+          ownerAadhaar: formData.aadharNo,      // MUST match backend enum exactly
+          services: formData.services.map((s: any) => s._id),
+        });
       } else {
-        data.append('shopName', formData.shopName);
-        data.append('ownerName', formData.ownerName);
-        data.append('gstNo', formData.gstNumber);
-        data.append('phoneNo', formData.phone);
-        data.append('longitude', String(coords?.longitude || ''));
-        data.append('latitude', String(coords?.latitude || ''));
-        data.append('role', UserRole.TOOL_SHOP);
-        formData.toolShopDomain.forEach((id: string) => data.append('categories', id));
-        
-        response = await RegisterAPI.toolShop(data);
+        response = await RegisterAPI.toolShop({
+          shopName: formData.shopName,
+          ownerName: formData.ownerName,
+          gstNo: formData.gstNumber,
+          phoneNo: formData.phone,
+          longitude: coords?.longitude,
+          latitude: coords?.latitude,
+          categories: formData.toolShopDomain, // ids
+          role: UserRole.TOOL_SHOP,
+        });
       }
-      
+
       if (response.data?.token) {
         Alert.alert("Registration Successful");
         console.log('Registration Response:', response.data);
@@ -248,8 +337,7 @@ export const SingleEmpDetail = () => {
     });
 
     if (!res.canceled) {
-      setFormData({ ...formData, avatar: res.assets[0].uri });
-      setErrors({ ...errors, avatar: '' });
+      updateField('avatar', res.assets[0].uri);
     }
   };
 
@@ -398,8 +486,8 @@ export const SingleEmpDetail = () => {
         return (
           <>
             <StepHeader title="Profile Photo" subtitle="Provide a clear photo of yourself" />
-            <TouchableOpacity 
-              style={styles.imagePicker} 
+            <TouchableOpacity
+              style={styles.imagePicker}
               onPress={pickImage}
             >
               {formData.avatar ? (
@@ -424,19 +512,13 @@ export const SingleEmpDetail = () => {
                 <FloatingLabelInput
                   label="Full Name"
                   value={formData.name}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, name: text });
-                    setErrors({ ...errors, name: validateName(text) });
-                  }}
+                  onChangeText={(text) => updateField('name', text, validateName)}
                   error={errors.name}
                 />
                 <FloatingLabelInput
                   label="Age"
                   value={formData.age}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, age: text });
-                    setErrors({ ...errors, age: validateAge(text) });
-                  }}
+                  onChangeText={(text) => updateField('age', text, validateAge)}
                   keyboardType="numeric"
                   error={errors.age}
                 />
@@ -448,10 +530,7 @@ export const SingleEmpDetail = () => {
                 <FloatingLabelInput
                   label="Owner Name"
                   value={formData.ownerName}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, ownerName: text });
-                    setErrors({ ...errors, name: validateName(text) });
-                  }}
+                  onChangeText={(text) => updateField('ownerName', text, validateName)}
                   error={errors.name}
                 />
               </>
@@ -462,19 +541,13 @@ export const SingleEmpDetail = () => {
                 <FloatingLabelInput
                   label="Owner Name"
                   value={formData.ownerName}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, ownerName: text });
-                    setErrors({ ...errors, name: validateName(text) });
-                  }}
+                  onChangeText={(text) => updateField('ownerName', text, validateName)}
                   error={errors.name}
                 />
                 <FloatingLabelInput
                   label="Shop Name"
                   value={formData.shopName}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, shopName: text });
-                    setErrors({ ...errors, shopName: validateName(text) });
-                  }}
+                  onChangeText={(text) => updateField('shopName', text, validateName)}
                   error={errors.shopName}
                 />
               </>
@@ -489,19 +562,13 @@ export const SingleEmpDetail = () => {
             <FloatingLabelInput
               label="Address"
               value={formData.address}
-              onChangeText={(text) => {
-                setFormData({ ...formData, address: text });
-                setErrors({ ...errors, address: validateAddress(text) });
-              }}
+              onChangeText={(text) => updateField('address', text, validateAddress)}
               error={errors.address}
             />
             <FloatingLabelInput
               label="Phone Number"
               value={formData.phone}
-              onChangeText={(text) => {
-                setFormData({ ...formData, phone: text });
-                setErrors({ ...errors, phone: validatePhone(text) });
-              }}
+              onChangeText={(text) => updateField('phone', text, validatePhone)}
               keyboardType="phone-pad"
               error={errors.phone}
             />
@@ -531,6 +598,9 @@ export const SingleEmpDetail = () => {
               </Text>
             </TouchableOpacity>
 
+            {errors.location ? (
+              <Text style={{ color: 'red', marginTop: 8 }}>{errors.location}</Text>
+            ) : null}
             {coords && (
               <Text style={{ marginTop: 8, color: "green", fontSize: 13 }}>
                 Location captured ✔
@@ -548,10 +618,7 @@ export const SingleEmpDetail = () => {
                 <FloatingLabelInput
                   label="Aadhar Number"
                   value={formData.aadharNo}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, aadharNo: text });
-                    setErrors({ ...errors, aadharNo: validateAadhar(text) });
-                  }}
+                  onChangeText={(text) => updateField('aadharNo', text, validateAadhar)}
                   keyboardType="numeric"
                   error={errors.aadharNo}
                 />
@@ -563,10 +630,7 @@ export const SingleEmpDetail = () => {
                 <FloatingLabelInput
                   label="Aadhar Number"
                   value={formData.aadharNo}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, aadharNo: text });
-                    setErrors({ ...errors, aadharNo: validateAadhar(text) });
-                  }}
+                  onChangeText={(text) => updateField('aadharNo', text, validateAadhar)}
                   keyboardType="numeric"
                   error={errors.aadharNo}
                 />
@@ -578,10 +642,7 @@ export const SingleEmpDetail = () => {
                 <FloatingLabelInput
                   label="GST Number"
                   value={formData.gstNumber}
-                  onChangeText={(text) => {
-                    setFormData({ ...formData, gstNumber: text });
-                    setErrors({ ...errors, gstNumber: validateGST(text) });
-                  }}
+                  onChangeText={(text) => updateField('gstNumber', text, validateGST)}
                   //keyboardType="numeric"
                   error={errors.gstNumber}
                 />
@@ -604,7 +665,7 @@ export const SingleEmpDetail = () => {
                   onSelectService={(selectedServices) => {
                     setFormData((prev) => ({
                       ...prev,
-                      services: selectedServices, // store selected service list
+                      services: selectedServices,
                     }))
                     setErrors((prev) => ({
                       ...prev,
@@ -650,59 +711,6 @@ export const SingleEmpDetail = () => {
   };
 
   // ==================== STEP HANDLER ====================
-  const handleNext = () => {
-    let newErrors = { ...errors };
-
-    if (currentStep === 0) {
-      if (!formData.avatar) {
-        newErrors.avatar = 'Profile photo is required';
-      }
-
-      if (role === UserRole.SINGLE_EMPLOYEE) {
-        newErrors.name = validateName(formData.name);
-        newErrors.age = validateAge(formData.age);
-      } else if (role === UserRole.MULTI_EMPLOYEE) {
-        newErrors.name = validateName(formData.ownerName);
-      }
-      else if (role === UserRole.TOOL_SHOP) {
-        newErrors.name = validateName(formData.ownerName);
-        newErrors.shopName = validateName(formData.shopName);
-      }
-    }
-    else if (currentStep === 1) {
-      newErrors.address = validateAddress(formData.address);
-      newErrors.phone = validatePhone(formData.phone);
-    }
-    else if (currentStep === 2) {
-      if (role === UserRole.SINGLE_EMPLOYEE) {
-        newErrors.aadharNo = validateAadhar(formData.aadharNo);
-      }
-      else if (role === UserRole.MULTI_EMPLOYEE) {
-        newErrors.aadharNo = validateAadhar(formData.aadharNo);
-      }
-    }
-    else if (currentStep === 3) {
-      if (role === UserRole.TOOL_SHOP) {
-        newErrors.toolShops = validateToolShops(formData.toolShopDomain);
-      }
-      else {
-        newErrors.services = validateServices(formData.services);
-      }
-    }
-
-    setErrors(newErrors);
-
-    const hasErrors = Object.values(newErrors).some((err) => err !== '');
-    if (hasErrors) return;
-
-    if (currentStep < 3) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      console.log('Final Form Data:', formData);
-      login(role as UserRole);
-      submitRegistration(); //  backend call
-    }
-  };
 
   // ==================== UI ====================
   return (
@@ -712,13 +720,7 @@ export const SingleEmpDetail = () => {
     >
       <AppHeader
         showBack={true}
-        onBackPress={() => {
-          if (currentStep > 0) {
-            setCurrentStep(currentStep - 1);
-          } else {
-            navigation.goBack();
-          }
-        }}
+        onBackPress={handleBack}
       />
 
       {/* ─── Progress Bar ─── */}

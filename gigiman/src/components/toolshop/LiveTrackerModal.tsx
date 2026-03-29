@@ -92,6 +92,7 @@ const LeafletMapView = ({
 
           // SERVICER MARKER
           var marker = L.marker([${lat}, ${lng}], {icon: carIcon}).addTo(map);
+          var destMarker = null;
 
           // ROUTING CONTROL
           var control = null;
@@ -99,25 +100,8 @@ const LeafletMapView = ({
           var destLng = ${destLng};
           var hasDestination = ${destination ? 'true' : 'false'};
 
-          if (hasDestination && destLat !== 0 && destLng !== 0) {
-             L.marker([destLat, destLng], {icon: destIcon}).addTo(map);
-
-             control = L.Routing.control({
-                waypoints: [
-                    L.latLng(${lat}, ${lng}),
-                    L.latLng(destLat, destLng)
-                ],
-                lineOptions: {
-                    styles: [{color: '#6200ea', opacity: 0.8, weight: 6}] // Swiggy/Zomato style bold line
-                },
-                createMarker: function() { return null; }, // We manage markers manually
-                addWaypoints: false,
-                draggableWaypoints: false,
-                fitSelectedRoutes: true,
-                showAlternatives: false,
-             }).addTo(map);
-
-             control.on('routesfound', function(e) {
+          function setupRouteEvents(ctrl) {
+             ctrl.on('routesfound', function(e) {
                 var routes = e.routes;
                 var summary = routes[0].summary;
                 var instructions = routes[0].instructions;
@@ -142,23 +126,69 @@ const LeafletMapView = ({
              });
           }
 
+          if (hasDestination && destLat !== 0 && destLng !== 0) {
+             destMarker = L.marker([destLat, destLng], {icon: destIcon}).addTo(map);
+
+             control = L.Routing.control({
+                waypoints: [
+                    L.latLng(${lat}, ${lng}),
+                    L.latLng(destLat, destLng)
+                ],
+                lineOptions: {
+                    styles: [{color: '#6200ea', opacity: 0.8, weight: 6}] // Swiggy/Zomato style bold line
+                },
+                createMarker: function() { return null; }, // We manage markers manually
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: true,
+                showAlternatives: false,
+             }).addTo(map);
+
+             setupRouteEvents(control);
+          }
+
           window.updateLocation = function(lat, lng, head) {
              if(lat && lng) {
                  var newLatLng = new L.LatLng(lat, lng);
                  marker.setLatLng(newLatLng);
-                 if(head) marker.setRotationAngle && marker.setRotationAngle(head); // If using rotated marker plugin
+                 if(head && marker.setRotationAngle) marker.setRotationAngle(head);
                  
                  // Update route start point
                  if (control) {
-                    // Update waypoints smoothly?
-                    // Standard way: control.setWaypoints([newLatLng, L.latLng(destLat, destLng)]);
-                    // To avoid full reload flicker, we might just rely on periodic updates or accept visual jump.
-                    // For demo, we update it.
-                    var waypoints = control.getWaypoints();
-                    waypoints[0].latLng = newLatLng;
-                    control.setWaypoints(waypoints);
+                    control.setWaypoints([newLatLng, L.latLng(destLat, destLng)]);
                  } else {
                      map.panTo(newLatLng);
+                 }
+             }
+          };
+
+          window.updateDestination = function(lat, lng) {
+             if(lat && lng) {
+                 destLat = lat;
+                 destLng = lng;
+                 var newDest = new L.LatLng(lat, lng);
+                 
+                 if (destMarker) {
+                     destMarker.setLatLng(newDest);
+                 } else {
+                     destMarker = L.marker(newDest, {icon: destIcon}).addTo(map);
+                 }
+
+                 if (control) {
+                     var startPos = marker.getLatLng();
+                     control.setWaypoints([startPos, newDest]);
+                 } else {
+                     var startPos = marker.getLatLng();
+                     control = L.Routing.control({
+                        waypoints: [startPos, newDest],
+                        lineOptions: { styles: [{color: '#6200ea', opacity: 0.8, weight: 6}] },
+                        createMarker: function() { return null; },
+                        addWaypoints: false,
+                        draggableWaypoints: false,
+                        fitSelectedRoutes: true,
+                        showAlternatives: false,
+                     }).addTo(map);
+                     setupRouteEvents(control);
                  }
              }
           };
@@ -172,6 +202,12 @@ const LeafletMapView = ({
             webViewRef.current.injectJavaScript(`if(window.updateLocation) window.updateLocation(${location.latitude}, ${location.longitude}, ${location.heading || 0}); true;`);
         }
     }, [location]);
+
+    useEffect(() => {
+        if (destination && webViewRef.current) {
+            webViewRef.current.injectJavaScript(`if(window.updateDestination) window.updateDestination(${destination.latitude}, ${destination.longitude}); true;`);
+        }
+    }, [destination?.latitude, destination?.longitude]);
 
     return (
         <WebView

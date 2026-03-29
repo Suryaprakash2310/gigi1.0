@@ -73,7 +73,7 @@ export const EmpBookingScreen = () => {
       //   navigation.navigate("BookingCompleted", {
       //   bookingId: job._id,
       // });
-      await AsyncStorage.removeItem("activeBookingId");
+      await setActiveBookingId(null);
       console.log("🗑 Active booking removed");
       navigation.replace("BookingCompleted");
 
@@ -162,6 +162,7 @@ export const EmpBookingScreen = () => {
     waitingServiceApproval,
     partRequest,
     setPartRequest,
+    activeBookingId,
     setActiveBookingId
   } = useProviderBooking();
 
@@ -245,21 +246,8 @@ export const EmpBookingScreen = () => {
   // }, [bookingId]);
 
 
-  useEffect(() => {
-    const checkOtpStatus = async () => {
-      if (!bookingId) return;
-
-      const active = await AsyncStorage.getItem("activeBookingId");
-
-      if (active === bookingId) {
-        setOtpVerified(true);
-      } else {
-        setOtpVerified(false);
-      }
-    };
-
-    checkOtpStatus();
-  }, [bookingId]);
+  // 🛡 Removed redundant local checkOtpStatus that caused OTP bypass.
+  // The screen now relies on the persistent otpVerified state from ProviderBookingContext.
   useEffect(() => {
     if ((route.params as any)?.serviceWaiting) {
       setWaitingServiceApproval(true);
@@ -489,8 +477,9 @@ export const EmpBookingScreen = () => {
     };
   }, [bookingId]);
 
+  // 🚀 Set active booking when entering screen to enable restoration
   useEffect(() => {
-    if (bookingId) {
+    if (bookingId && activeBookingId !== bookingId) {
       setActiveBookingId(bookingId);
     }
   }, [bookingId]);
@@ -599,7 +588,7 @@ export const EmpBookingScreen = () => {
       setOtpVerified(true); // 🔥 IMPORTANT (don't forget this)
 
       if (bookingId) {
-        await AsyncStorage.setItem("activeBookingId", bookingId);
+        await setActiveBookingId(bookingId);
         console.log("💾 Saved active booking:", bookingId);
       }
     };

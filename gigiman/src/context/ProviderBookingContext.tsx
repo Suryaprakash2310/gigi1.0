@@ -1,6 +1,7 @@
 import { socket } from "@/socket/socket";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { stopBookingSound } from "@/utils/BookingSoundManager";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface IncomingBooking {
   id: string;
@@ -63,12 +64,62 @@ const ProviderBookingContext =
 export function ProviderBookingProvider({ children }: any) {
   const [clientRequests, setClientRequests] = useState<IncomingBooking[]>([]);
   const [workingMode, setWorkingMode] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
   const [pickupDetails, setPickupDetails] = useState<PickupDetails | null>(null);
   const [waitingApproval, setWaitingApproval] = useState(false);
   const [waitingServiceApproval, setWaitingServiceApproval] = useState(false);
-  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [activeBookingId, _setActiveBookingId] = useState<string | null>(null);
+  const [_otpVerified, _setOtpVerified] = useState(false);
   const [partRequest, setPartRequest] = useState<any>(null);
+
+  // Persistence Logic for OTP
+  const setOtpVerified = async (val: boolean) => {
+    _setOtpVerified(val);
+    await AsyncStorage.setItem("otpVerified", JSON.stringify(val));
+    console.log("💾 Persisted otpVerified:", val);
+  };
+
+  // Persistence Logic for Booking ID
+  const setActiveBookingId = async (id: string | null) => {
+    _setActiveBookingId(id);
+    if (id) {
+      await AsyncStorage.setItem("activeBookingId", id);
+      console.log("💾 Persisted activeBookingId:", id);
+    } else {
+      await AsyncStorage.removeItem("activeBookingId");
+      await AsyncStorage.removeItem("otpVerified"); // Clear OTP when ID is cleared
+      _setOtpVerified(false);
+      console.log("🗑 Cleared booking state from storage");
+    }
+  };
+
+  // Load from storage on mount
+  useEffect(() => {
+    const loadPersistedBooking = async () => {
+      try {
+        const [savedId, savedOtp] = await Promise.all([
+          AsyncStorage.getItem("activeBookingId"),
+          AsyncStorage.getItem("otpVerified"),
+        ]);
+
+        if (savedId) {
+          console.log("🔄 Restored activeBookingId from storage:", savedId);
+          _setActiveBookingId(savedId);
+        }
+        if (savedOtp) {
+          try {
+            const isVerified = JSON.parse(savedOtp);
+            console.log("🔄 Restored otpVerified from storage:", isVerified);
+            _setOtpVerified(isVerified);
+          } catch (e) {
+            console.error("Failed to parse savedOtp", e);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load booking state", e);
+      }
+    };
+    loadPersistedBooking();
+  }, []);
   const addBookingRequest = (booking: IncomingBooking) => {
     setClientRequests(prev => {
       if (prev.some(r => r.id === booking.id)) return prev;
@@ -154,7 +205,7 @@ const resetBookingState = () => {
         setWorkingMode,
         addBookingRequest,
         removeBookingRequest,
-        otpVerified,
+        otpVerified: _otpVerified,
         setOtpVerified,
         pickupDetails,
         setPickupDetails,

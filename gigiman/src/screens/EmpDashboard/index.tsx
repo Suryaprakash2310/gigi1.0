@@ -37,6 +37,8 @@ export const EmpDashboard = () => {
     workingMode,
     setWorkingMode,
     removeBookingRequest,
+    activeBookingId,
+    setActiveBookingId,
   } = useProviderBooking();
 
   const isTeam = userRole === UserRole.MULTI_EMPLOYEE;
@@ -86,6 +88,17 @@ export const EmpDashboard = () => {
     };
   }, []);
 
+  // 🔄 RESTORE FLOW: If app was killed and restarted, check for active booking
+  useEffect(() => {
+    if (activeBookingId) {
+      console.log("🚀 Redirecting to active booking:", activeBookingId);
+      navigation.navigate("BookingStack", {
+        screen: "Booking",
+        params: { bookingId: activeBookingId }
+      });
+    }
+  }, [activeBookingId]);
+
   /* ======================================================
      ACCEPT / REJECT
   ====================================================== */
@@ -103,6 +116,7 @@ export const EmpDashboard = () => {
     socket.emit("servicer-accept", {
       bookingId: job.id,
     });
+    setActiveBookingId(job.id); // 🔥 Persist ID as soon as accepted
     removeBookingRequest(job.id);
 
     // 🔇 Stop alert sound on accept
