@@ -14,6 +14,7 @@ import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
 import { TeamEmployeeScreen } from '@/screens/team/TeamDashboardScreen';
 import PocketStack from './PocketStack';
 import EmpProfileStack from './EmpProfileStack';
+import CommissionStack from './CommissionStack';
 
 export type AppStackParamList = {
   Home: undefined;
@@ -23,6 +24,7 @@ export type AppStackParamList = {
   };
   Pocket: undefined;
   ProfileTab: undefined;
+  CommissionTab: undefined;
 };
 
 const Tab = createBottomTabNavigator<AppStackParamList>();
@@ -66,6 +68,9 @@ export default function AppStack() {
             iconName = focused ? 'person' : 'person-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           }
+          else if (route.name === 'CommissionTab') {
+            return <MaterialIcons name="payments" size={size} color={color} />;
+          }
         },
       })}
     >
@@ -74,6 +79,7 @@ export default function AppStack() {
       <Tab.Screen name="BookingStack" component={EmpBookingStack} />
       <Tab.Screen name="Pocket" component={PocketStack} />
       <Tab.Screen name="ProfileTab" component={EmpProfileStack} />
+      <Tab.Screen name="CommissionTab" component={CommissionStack} />
     </Tab.Navigator>
   );
 }

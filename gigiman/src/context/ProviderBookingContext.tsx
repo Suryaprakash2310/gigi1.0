@@ -132,70 +132,72 @@ export function ProviderBookingProvider({ children }: any) {
       prev.filter(r => r.id !== bookingId)
     );
   };
-const resetBookingState = () => {
-  setActiveBookingId(null);
-  setOtpVerified(false);
-  setPartRequest(null);
-  setWaitingApproval(false);
-  setWaitingServiceApproval(false);
-  setPickupDetails(null);
-};
+  const resetBookingState = () => {
+    setActiveBookingId(null);
+    setOtpVerified(false);
+    setPartRequest(null);
+    setWaitingApproval(false);
+    setWaitingServiceApproval(false);
+    setPickupDetails(null);
+  };
 
   useEffect(() => {
-  const interval = setInterval(() => {
-    const now = Date.now();
+    const interval = setInterval(() => {
+      const now = Date.now();
 
-    setClientRequests(prev => {
-      const filtered = prev.filter(job => {
-        if (!job.expiresAt) return true;
-        return job.expiresAt > now;
+      setClientRequests(prev => {
+        const filtered = prev.filter(job => {
+          if (!job.expiresAt) return true;
+          return job.expiresAt > now;
+        });
+
+        // 🔇 Stop sound when all requests have expired
+        if (prev.length > 0 && filtered.length === 0) {
+          stopBookingSound();
+        }
+
+        return filtered;
       });
+    }, 1000);
 
-      // 🔇 Stop sound when all requests have expired
-      if (prev.length > 0 && filtered.length === 0) {
-        stopBookingSound();
-      }
+    return () => clearInterval(interval);
+  }, []);
 
-      return filtered;
-    });
-  }, 1000);
 
-  return () => clearInterval(interval);
-}, []);
 
-// useEffect(() => {
-//   if (!activeBookingId) return;
+  // useEffect(() => {
+  //   if (!activeBookingId) return;
 
-//   const handleToolRequestCreated = (payload: any) => {
-//     if (payload.bookingId !== activeBookingId) return;
+  //   const handleToolRequestCreated = (payload: any) => {
+  //     if (payload.bookingId !== activeBookingId) return;
 
-//     setPartRequest({
-//       requestId: payload.requestId,
-//       totalCost: payload.totalCost,
-//       status: "REQUESTED",
-//     });
+  //     setPartRequest({
+  //       requestId: payload.requestId,
+  //       totalCost: payload.totalCost,
+  //       status: "REQUESTED",
+  //     });
 
-//     setWaitingApproval(true);
-//   };
+  //     setWaitingApproval(true);
+  //   };
 
-//   const handleToolPermissionApproved = (payload: any) => {
-//     if (payload.bookingId !== activeBookingId) return;
+  //   const handleToolPermissionApproved = (payload: any) => {
+  //     if (payload.bookingId !== activeBookingId) return;
 
-//     setPartRequest((prev: any) =>
-//       prev ? { ...prev, status: "APPROVED_BY_USER" } : prev
-//     );
+  //     setPartRequest((prev: any) =>
+  //       prev ? { ...prev, status: "APPROVED_BY_USER" } : prev
+  //     );
 
-//     setWaitingApproval(false);
-//   };
+  //     setWaitingApproval(false);
+  //   };
 
-//   socket.on("tool-request-created", handleToolRequestCreated);
-//   socket.on("tool-permission-approved", handleToolPermissionApproved);
+  //   socket.on("tool-request-created", handleToolRequestCreated);
+  //   socket.on("tool-permission-approved", handleToolPermissionApproved);
 
-//   return () => {
-//     socket.off("tool-request-created", handleToolRequestCreated);
-//     socket.off("tool-permission-approved", handleToolPermissionApproved);
-//   };
-// }, [activeBookingId]);
+  //   return () => {
+  //     socket.off("tool-request-created", handleToolRequestCreated);
+  //     socket.off("tool-permission-approved", handleToolPermissionApproved);
+  //   };
+  // }, [activeBookingId]);
 
   return (
     <ProviderBookingContext.Provider

@@ -215,35 +215,6 @@ export const EmpBookingScreen = () => {
     }
   };
 
-  //console.log('Booking Screen Params:', { bookingId });
-  // ✅ Handle case when parts are returned from Parts screen
-
-
-  // useFocusEffect(
-  //   React.useCallback(() => {
-  //     const params = route.params as any;
-  //     if (params?.partsbuyed) {
-  //       setOtpVerified(true);
-  //       setShowLoader(true);
-  //       setPartsFilled(true);
-
-  //       setTimeout(() => {
-  //         setShowLoader(false);
-  //         setShowShopInfo(true);
-  //       }, 1500); // loader visible for 1.5 seconds
-  //     }
-  //   }, [route.params])
-  // );
-  // useEffect(() => {
-  //   return () => {
-  //     setOtpVerified(false);
-  //     setPickupDetails(null);
-  //     setPartRequest(null);
-  //     setWaitingApproval(false);
-  //     setWaitingServiceApproval(false);
-  //     setPartsCollected(false);
-  //   };
-  // }, [bookingId]);
 
 
   // 🛡 Removed redundant local checkOtpStatus that caused OTP bypass.
@@ -333,82 +304,6 @@ export const EmpBookingScreen = () => {
 
 
 
-  /* ======================================================
-     LIVE TRACKING (PROVIDER SIDE)
-  ====================================================== */
-
-  // useEffect(() => {
-  //   let subscription: Location.LocationSubscription | null = null;
-  //   let isMounted = true;
-
-  //   const startTracking = async () => {
-  //     // 1. Check/Request Permissions
-  //     try {
-  //       const { status } = await Location.requestForegroundPermissionsAsync();
-  //       if (!isMounted) return;
-
-  //       if (status !== 'granted') {
-  //         console.log('🚫 Location permission denied');
-  //         return;
-  //       }
-
-  //       // 2. Start Watching
-  //       console.log("🛰️ Starting Live Tracking for Booking:", bookingId);
-  //       const sub = await Location.watchPositionAsync(
-  //         {
-  //           accuracy: Location.Accuracy.High,
-  //           timeInterval: 5000,
-  //           distanceInterval: 10,
-  //         },
-  //         (location) => {
-  //           if (!isMounted) return;
-  //           const { latitude, longitude, heading } = location.coords;
-
-  //           setMyLocation({ latitude, longitude, heading }); // Update local state for Map Modal
-
-  //           console.log("📍 Location Emitted:", latitude, longitude);
-
-  //           // EMIT TO BACKEND
-  //           socket.emit("send-location", {
-  //             bookingId,
-  //             location: {
-  //               latitude,
-  //               longitude,
-  //               heading,
-  //               eta: "10 mins"
-  //             }
-  //           });
-  //         }
-  //       );
-
-  //       if (isMounted) {
-  //         subscription = sub;
-  //       } else {
-  //         // If unmounted while waiting for promise, remove immediately
-  //         sub.remove();
-  //       }
-  //     } catch (error) {
-  //       console.log("Error starting location tracking:", error);
-  //     }
-  //   };
-
-  //   if (bookingId && !otpVerified) {
-  //     startTracking();
-  //   }
-
-  //   return () => {
-  //     isMounted = false;
-  //     console.log("🛑 Stopping Live Tracking");
-  //     try {
-  //       if (subscription) {
-  //         subscription.remove();
-  //       }
-  //     } catch (e) {
-  //       console.log("Error removing location subscription:", e);
-  //     }
-  //   };
-  // }, [bookingId, otpVerified]);
-
 
   const myLiveLocation = useLiveTracking(bookingId, !otpVerified);
 
@@ -425,36 +320,36 @@ export const EmpBookingScreen = () => {
   ====================================================== */
 
 
-  useEffect(() => {
-    // Fired immediately after provider sends part request
-    socket.on("tool-request-created", (payload) => {
-      console.log("🧰 Part request created:", payload);
+  //useEffect(() => {
+  // Fired immediately after provider sends part request
+  // socket.on("tool-request-created", (payload) => {
+  //   console.log("🧰 Part request created:", payload);
 
-      setPartRequest({
-        requestId: payload.requestId,
-        totalCost: payload.totalCost,
-        status: "PENDING",
-      });
+  //   setPartRequest({
+  //     requestId: payload.requestId,
+  //     totalCost: payload.totalCost,
+  //     status: "PENDING",
+  //   });
 
-      setWaitingApproval(true);
-    });
+  //   setWaitingApproval(true);
+  // });
 
-    // Fired when USER approves
-    socket.on("tool-permission-approved", ({ requestId }) => {
-      console.log("✅ User approved part request:", requestId);
+  // Fired when USER approves
+  // socket.on("tool-permission-approved", ({ requestId }) => {
+  //   console.log("✅ User approved part request:", requestId);
 
-      setPartRequest((prev: any) =>
-        prev ? { ...prev, status: "APPROVED_BY_USER" } : prev
-      );
+  //   setPartRequest((prev: any) =>
+  //     prev ? { ...prev, status: "APPROVED_BY_USER" } : prev
+  //   );
 
-      setWaitingApproval(false);
-    });
+  //   setWaitingApproval(false);
+  // });
 
-    return () => {
-      socket.off("tool-request-created");
-      socket.off("tool-permission-approved");
-    };
-  }, []);
+  //return () => {
+  // socket.off("tool-request-created");
+  //socket.off("tool-permission-approved");
+  //};
+  //}, []);
 
   useEffect(() => {
     if (!bookingId) return;
