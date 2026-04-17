@@ -15,6 +15,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Vibration,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -145,7 +146,7 @@ export const EmpBookingScreen = () => {
   const [loading, setLoading] = useState(true);
   //const [partRequest, setPartRequest] = useState<any>(null);
   //const [waitingApproval, setWaitingApproval] = useState(false);
-  const [partsCollected, setPartsCollected] = useState(false);
+  // const [partsCollected, setPartsCollected] = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const [myLocation, setMyLocation] = useState<any>(null);
   const [userLiveLocation, setUserLiveLocation] = useState<any>(null);
@@ -163,7 +164,9 @@ export const EmpBookingScreen = () => {
     partRequest,
     setPartRequest,
     activeBookingId,
-    setActiveBookingId
+    setActiveBookingId,
+    partsCollected,
+    setPartsCollected,
   } = useProviderBooking();
 
   const [calling, setCalling] = useState(false);
@@ -226,80 +229,115 @@ export const EmpBookingScreen = () => {
   }, [route.params]);
 
 
-  useEffect(() => {
-    const loadBooking = async () => {
-      if (!bookingId) {
-        setLoading(false);
+  /* ======================================================
+     AUTHORITATIVE STATE HYDRATION
+     Called on mount AND after every socket reconnect.
+     API is the single source of truth — AsyncStorage is
+     only a cache of last-known state.
+  ====================================================== */
+  const hydrateFromApi = async (id: string) => {
+    try {
+      console.log("🔄 hydrateFromApi:", id);
+
+      // ── 1. Fetch booking ──────────────────────────────
+      const res = await apiClient.get<{ booking?: any }>(`/booking/${id}`);
+      const jobPayload = res.data?.booking ?? (res.data as any);
+      const status: string = jobPayload?.status ?? "";
+      const normalizedStatus = status.toLowerCase();
+
+      // 🔍 Debug — confirm exactly what backend returned
+      console.log("📊 Backend job status:", status);
+      console.log("🔎 Normalized status:", normalizedStatus);
+      setJob(jobPayload);
+
+      // Shared status constants — single source of truth for comparisons
+      const BOOKING_STATUS = {
+        IN_PROGRESS: "in_progress",
+        COMPLETED: "completed",
+      } as const;
+
+      // Always set explicitly (true OR false) to overwrite any stale context value
+      if (normalizedStatus === BOOKING_STATUS.IN_PROGRESS) {
+        setOtpVerified(true);
+        console.log("✅ hydrateFromApi: OTP already verified (status:", status, ")");
+      } else if (normalizedStatus === BOOKING_STATUS.COMPLETED) {
+        // Job finished while we were offline — navigate away
+        console.log("🏁 hydrateFromApi: booking already completed, navigating");
+        navigation.replace("BookingCompleted" as any);
         return;
+      } else {
+        // Any other status → OTP not yet verified, show OTP screen
+        setOtpVerified(false);
+        console.log("⏳ hydrateFromApi: OTP not yet verified (status:", status, ")");
       }
+
+      // ── 2. Fetch part-request ─────────────────────────
       try {
-        console.log("Started");
-        const res = await apiClient.get<{ booking?: any }>(`/booking/${bookingId}`);
-        console.log('booking response', (res.data && (res.data as any).booking) ?? res.data);
-        // backend returns { success: true, booking: { ... } }
-        // prefer the booking payload but fall back to whole response
-        const jobPayload = res.data?.booking ?? (res.data as any);
-        console.log('job payload ->', jobPayload);
-        setJob(jobPayload);
-      } catch (err) {
-        Alert.alert("Error", "Failed to load booking");
-      } finally {
-        setLoading(false);
+        const request: any = await fetchPartRequestById(id);
+        console.log("🔄 Restored part request:", request?.status);
+
+        if (request) {
+          setPartRequest(request);
+
+          if (request.status === "PENDING") {
+            setWaitingApproval(true);
+          }
+
+          if (request.status === "APPROVED_BY_USER") {
+            setWaitingApproval(false);
+          }
+
+          if (
+            (request.status === "READY_FOR_PICKUP" ||
+              request.status === "ACCEPTED_BY_TOOLSHOP") &&
+            request.shopId &&
+            !partsCollected
+          ) {
+            setPickupDetails({
+              requestId: request._id,
+              otp: request.otp,
+              shop: request.selectedToolShop || {},
+              parts: request.parts,
+              totalCost: request.totalCost,
+            });
+          }
+
+          if (request.status === "COLLECTED") {
+            setPartsCollected(true);
+            setPartsFilled(true);
+            setPickupDetails(null);
+          }
+        }
+      } catch (partErr) {
+        // Part request may not exist yet — not an error
+        console.log("ℹ No part request found for booking:", id);
       }
-    };
-    loadBooking();
+    } catch (err) {
+      console.error("❌ hydrateFromApi failed:", err);
+      Alert.alert("Error", "Failed to load booking details");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Run once on mount
+  useEffect(() => {
+    if (bookingId) {
+      hydrateFromApi(bookingId);
+    } else {
+      setLoading(false);
+    }
   }, [bookingId]);
 
-  /* ======================================================
-     RESTORE PART REQUEST STATE
-  ====================================================== */
+  // Re-run whenever the socket reconnects (catches all missed events)
   useEffect(() => {
-    const restoreState = async () => {
-      if (!bookingId) return;
-
-      const request: any = await fetchPartRequestById(bookingId);
-      console.log("🔄 Restored part request:", request);
-
-      if (request) {
-        setPartRequest(request);
-
-        // If waiting for approval
-        if (request.status === "PENDING") {
-          setWaitingApproval(true);
-        }
-
-        // If approved by user but not yet accepted by shop
-        if (request.status === "APPROVED_BY_USER") {
-          setWaitingApproval(false);
-          // waiting for toolshop accept... (socket will handle)
-        }
-
-        // If shop accepted / ready for pickup
-        if (
-          (request.status === "READY_FOR_PICKUP" ||
-            request.status === "ACCEPTED_BY_TOOLSHOP") &&
-          request.shopId &&
-          !partsCollected
-        ) {
-          setPickupDetails({
-            requestId: request._id,
-            otp: request.otp, // Ensure backend returns this if viewer is the assigned provider
-            shop: request.selectedToolShop || {}, // Backend should populate this
-            parts: request.parts,
-            totalCost: request.totalCost,
-          });
-        }
-
-        // If already collected
-        if (request.status === "COLLECTED") {
-          setPartsCollected(true);
-          setPartsFilled(true);
-          setPickupDetails(null);
-        }
+    const sub = DeviceEventEmitter.addListener("socket:reconnected", () => {
+      if (bookingId) {
+        console.log("🔁 Socket reconnected — re-hydrating state from API");
+        hydrateFromApi(bookingId);
       }
-    };
-
-    restoreState();
+    });
+    return () => sub.remove();
   }, [bookingId]);
 
 
@@ -378,30 +416,30 @@ export const EmpBookingScreen = () => {
       setActiveBookingId(bookingId);
     }
   }, [bookingId]);
-  useEffect(() => {
-    const onToolshopAccepted = (payload: any) => {
-      if (partsCollected) {
-        console.log("⛔ Ignoring toolshop-accepted (already collected)");
-        return;
-      }
+  // useEffect(() => {
+  //   const onToolshopAccepted = (payload: any) => {
+  //     if (partsCollected) {
+  //       console.log("⛔ Ignoring toolshop-accepted (already collected)");
+  //       return;
+  //     }
 
-      console.log("🏪 Pickup details received:", payload);
+  //     console.log("🏪 Pickup details received:", payload);
 
-      setPickupDetails({
-        requestId: payload.requestId,
-        otp: payload.otp,
-        shop: payload.shop,
-        parts: payload.parts,
-        totalCost: payload.totalCost,
-      });
-    };
+  //     setPickupDetails({
+  //       requestId: payload.requestId,
+  //       otp: payload.otp,
+  //       shop: payload.shop,
+  //       parts: payload.parts,
+  //       totalCost: payload.totalCost,
+  //     });
+  //   };
 
-    socket.on("toolshop-accepted", onToolshopAccepted);
+  //   socket.on("toolshop-accepted", onToolshopAccepted);
 
-    return () => {
-      socket.off("toolshop-accepted", onToolshopAccepted);
-    };
-  }, [partsCollected]);
+  //   return () => {
+  //     socket.off("toolshop-accepted", onToolshopAccepted);
+  //   };
+  // }, [partsCollected]);
 
   useEffect(() => {
     const onServiceApproved = ({ bookingId: id }: any) => {
@@ -477,7 +515,14 @@ export const EmpBookingScreen = () => {
 
 
   useEffect(() => {
-    const onOtpSuccess = async () => {
+    const onOtpSuccess = async (payload: any) => {
+      // 🔒 Guard: only grant access if the success is for THIS booking
+      const incomingId = payload?.bookingId ?? payload?._id ?? payload?.booking?._id;
+      if (incomingId && incomingId !== bookingId) {
+        console.log("⚠ Ignoring otp-success for unrelated booking:", incomingId);
+        return;
+      }
+
       console.log("✅ OTP VERIFIED SUCCESS");
 
       setOtpVerified(true); // 🔥 IMPORTANT (don't forget this)

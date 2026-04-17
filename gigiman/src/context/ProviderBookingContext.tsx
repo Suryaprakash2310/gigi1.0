@@ -2,6 +2,7 @@ import { socket } from "@/socket/socket";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { stopBookingSound } from "@/utils/BookingSoundManager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import apiClient from "@/api/client";
 
 export interface IncomingBooking {
   id: string;
@@ -55,6 +56,8 @@ interface ProviderBookingContextType {
   setActiveBookingId: (id: string | null) => void;
   partRequest: any;
   setPartRequest: React.Dispatch<React.SetStateAction<any>>;
+  partsCollected: boolean;
+  setPartsCollected: React.Dispatch<React.SetStateAction<boolean>>;
   resetBookingState: () => void;
 }
 
@@ -70,6 +73,7 @@ export function ProviderBookingProvider({ children }: any) {
   const [activeBookingId, _setActiveBookingId] = useState<string | null>(null);
   const [_otpVerified, _setOtpVerified] = useState(false);
   const [partRequest, setPartRequest] = useState<any>(null);
+  const [partsCollected, setPartsCollected] = useState(false);
 
   // Persistence Logic for OTP
   const setOtpVerified = async (val: boolean) => {
@@ -92,7 +96,7 @@ export function ProviderBookingProvider({ children }: any) {
     }
   };
 
-  // Load from storage on mount
+  // Load from storage on mount — API is source of truth; AsyncStorage is offline fallback
   useEffect(() => {
     const loadPersistedBooking = async () => {
       try {
@@ -104,14 +108,34 @@ export function ProviderBookingProvider({ children }: any) {
         if (savedId) {
           console.log("🔄 Restored activeBookingId from storage:", savedId);
           _setActiveBookingId(savedId);
-        }
-        if (savedOtp) {
+
+          // ✅ Verify otpVerified against live API rather than trusting stale cache
           try {
-            const isVerified = JSON.parse(savedOtp);
-            console.log("🔄 Restored otpVerified from storage:", isVerified);
-            _setOtpVerified(isVerified);
-          } catch (e) {
-            console.error("Failed to parse savedOtp", e);
+            const res = await apiClient.get(`/booking/${savedId}`);
+            const job = (res.data as any)?.booking ?? res.data;
+            const status: string = job?.status ?? "";
+            const normalizedStatus = status.toLowerCase();
+
+            const BOOKING_STATUS = { IN_PROGRESS: "in_progress" } as const;
+
+            console.log("📊 Backend job status (boot):", status);
+            console.log("🔎 Normalized status (boot):", normalizedStatus);
+
+            const realOtpVerified = normalizedStatus === BOOKING_STATUS.IN_PROGRESS;
+
+            console.log("🔍 API-verified otpVerified:", realOtpVerified, "(status:", status, ")");
+            _setOtpVerified(realOtpVerified);
+            await AsyncStorage.setItem("otpVerified", JSON.stringify(realOtpVerified));
+          } catch (apiErr) {
+            // Network offline — fall back to cached value
+            console.log("⚠ API unreachable on boot, using cached otpVerified");
+            if (savedOtp) {
+              try {
+                _setOtpVerified(JSON.parse(savedOtp));
+              } catch (e) {
+                console.error("Failed to parse savedOtp", e);
+              }
+            }
           }
         }
       } catch (e) {
@@ -139,6 +163,7 @@ export function ProviderBookingProvider({ children }: any) {
     setWaitingApproval(false);
     setWaitingServiceApproval(false);
     setPickupDetails(null);
+    setPartsCollected(false);
   };
 
   useEffect(() => {
@@ -220,6 +245,8 @@ export function ProviderBookingProvider({ children }: any) {
         resetBookingState,
         setPartRequest,
         partRequest,
+        partsCollected,
+        setPartsCollected,
       }}
     >
       {children}

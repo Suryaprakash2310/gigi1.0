@@ -26,6 +26,13 @@ export default function ProviderBookingRuntimeListener() {
     };
     const onBookingCancelled = (payload: any) => {
       console.log("📥 user-cancel-booking received:", payload);
+
+      // 🔒 Only act if this cancellation belongs to the provider's active booking
+      if (payload?.bookingId && payload.bookingId !== activeBookingId) {
+        console.log("⚠ Ignoring cancel for unrelated booking:", payload.bookingId);
+        return;
+      }
+
       resetBookingState?.();
       Alert.alert("Booking Cancelled", "Customer cancelled the job");
       navigation.replace("Dashboard");
@@ -101,6 +108,37 @@ export default function ProviderBookingRuntimeListener() {
       socket.off("tool-permission-approved", onToolPermissionApproved);
     };
   }, [socket, activeBookingId]);
+
+
+  // useEffect(() => {
+  //   if (!socket) return;
+
+  //   const onServiceApproved = (payload: any) => {
+  //     if (payload.bookingId !== activeBookingId) return;
+
+  //     console.log("✅ Service approved:", payload);
+
+  //     setWaitingServiceApproval(false);
+  //   };
+
+  //   const onServiceRejected = (payload: any) => {
+  //     if (payload.bookingId !== activeBookingId) return;
+
+  //     console.log("❌ Service rejected:", payload);
+
+  //     setWaitingServiceApproval(false);
+
+  //     Alert.alert("Customer Rejected", "Continue with original service.");
+  //   };
+
+  //   socket.on("service-approved", onServiceApproved);
+  //   socket.on("service-rejected", onServiceRejected);
+
+  //   return () => {
+  //     socket.off("service-approved", onServiceApproved);
+  //     socket.off("service-rejected", onServiceRejected);
+  //   };
+  // }, []);
 
 
 

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect } from "react";
+import { DeviceEventEmitter } from "react-native";
 import { socket } from "@/socket/socket";
 import { AuthContext } from "@/context/AuthContext";
 import { UserRole } from "@/utils/enums/CommonEnum";
@@ -67,13 +68,19 @@ export const SocketProvider = ({ children }: any) => {
     }
 
     console.log("✅ Provider re-registered after reconnect");
-     // 2️⃣ Rejoin active booking tracking room
+
+    // 2️⃣ Rejoin active booking tracking room
     const activeBookingId = await AsyncStorage.getItem("activeBookingId");
 
     if (activeBookingId) {
       socket.emit("join-tracking", { bookingId: activeBookingId });
       console.log("📍 Rejoined tracking room:", activeBookingId);
     }
+
+    // 3️⃣ Signal all mounted screens to re-hydrate from API
+    //    This recovers any socket events missed while offline/backgrounded
+    DeviceEventEmitter.emit("socket:reconnected");
+    console.log("📡 Emitted socket:reconnected for screen hydration");
   };
 
   socket.on("reconnect", handleReconnect);

@@ -95,8 +95,9 @@ export default function BookingSocketListener() {
        LEADER OTP READY
     ====================================================== */
     useEffect(() => {
-        const onLeaderOtpReady = ({ bookingId }: any) => {
+        const onLeaderOtpReady = async ({ bookingId }: any) => {
             console.log("🟢 LEADER OTP READY:", bookingId);
+            await stopBookingSound();
 
             navigation.navigate("BookingStack", {
                 screen: "Booking",

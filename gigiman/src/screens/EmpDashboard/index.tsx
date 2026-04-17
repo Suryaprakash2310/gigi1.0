@@ -74,19 +74,19 @@ export const EmpDashboard = () => {
   };
 
   // Only primary employee (team leader) should navigate after assignment
-  useEffect(() => {
-    const onLeaderOtpReady = ({ bookingId }: any) => {
-      console.log("🟢 LEADER OTP READY:", bookingId);
-      navigation.navigate("BookingStack", {
-        screen: "Booking",
-        params: { bookingId }
-      });
-    };
-    socket.on("leader-otp-ready", onLeaderOtpReady);
-    return () => {
-      socket.off("leader-otp-ready", onLeaderOtpReady);
-    };
-  }, []);
+  // useEffect(() => {
+  //   const onLeaderOtpReady = ({ bookingId }: any) => {
+  //     console.log("🟢 LEADER OTP READY:", bookingId);
+  //     navigation.navigate("BookingStack", {
+  //       screen: "Booking",
+  //       params: { bookingId }
+  //     });
+  //   };
+  //   socket.on("leader-otp-ready", onLeaderOtpReady);
+  //   return () => {
+  //     socket.off("leader-otp-ready", onLeaderOtpReady);
+  //   };
+  // }, []);
 
   // 🔄 RESTORE FLOW: If app was killed and restarted, check for active booking
   useEffect(() => {
