@@ -72,7 +72,7 @@ export default function CommissionHomeScreen() {
     );
   }
 
-  const unpaid = status?.unpaidCommission || 0;
+  const unpaid = status?.totalUnpaid || 0;
   const isBlocked = status?.isBlocked || false;
   const isHealthy = unpaid <= 0;
 
@@ -121,8 +121,7 @@ export default function CommissionHomeScreen() {
               <AppText style={styles.warningTitle}>Action Required</AppText>
             </View>
             <AppText style={styles.warningDescription}>
-              Your account is temporarily blocked because your unpaid commission has exceeded the limit. 
-              Please pay your dues to unblock your account and continue receiving new jobs.
+              {status?.message || "Your account is temporarily blocked because your unpaid commission has exceeded the limit. Please pay your dues to unblock your account and continue receiving new jobs."}
             </AppText>
           </View>
         )}

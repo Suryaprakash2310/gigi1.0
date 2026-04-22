@@ -1,10 +1,10 @@
 import api from "./client";
 
 export interface CommissionStatusResponse {
-  totalCommission: number;
-  unpaidCommission: number;
+  totalUnpaid: number;
   isBlocked: boolean;
   threshold: number;
+  message?: string;
 }
 
 export interface CommissionRechargeResponse {

@@ -25,7 +25,7 @@ export default function PayCommissionScreen() {
   const [razorpayHtml, setRazorpayHtml] = useState<string | null>(null);
   const [currentOrderData, setCurrentOrderData] = useState<{ amount: number; orderId: string } | null>(null);
 
-  const totalUnpaid = status?.unpaidCommission || 0;
+  const totalUnpaid = status?.totalUnpaid || 0;
 
   const handlePay = async () => {
     if (totalUnpaid <= 0) {

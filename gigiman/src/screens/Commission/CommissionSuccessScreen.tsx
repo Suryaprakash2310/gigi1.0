@@ -34,7 +34,7 @@ export default function CommissionSuccessScreen() {
           {loading && !status ? (
             <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : (
-            <AppText style={styles.amountValue}>₹ {status?.unpaidCommission?.toFixed(2) || "0.00"}</AppText>
+            <AppText style={styles.amountValue}>₹ {status?.totalUnpaid?.toFixed(2) || "0.00"}</AppText>
           )}
         </View>
 

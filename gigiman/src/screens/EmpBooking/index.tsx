@@ -442,11 +442,20 @@ export const EmpBookingScreen = () => {
   // }, [partsCollected]);
 
   useEffect(() => {
-    const onServiceApproved = ({ bookingId: id }: any) => {
+    const onServiceApproved = ({ bookingId: id, service, totalPrice }: any) => {
       if (id !== bookingId) return;
 
       console.log("✅ Service approved by user");
       setWaitingServiceApproval(false);
+
+      // Update Job state to reflect new service and cost
+      if (totalPrice || service) {
+        setJob((prev: any) => prev ? {
+          ...prev,
+          cost: totalPrice || prev.cost,
+          serviceCategoryName: service || prev.serviceCategoryName
+        } : prev);
+      }
     };
 
     const onServiceRejected = ({ bookingId: id }: any) => {
@@ -458,12 +467,36 @@ export const EmpBookingScreen = () => {
       Alert.alert("Customer Rejected", "Continue with original service.");
     };
 
+    const onExtraServiceResponse = ({ bookingId: id, status, totalPrice, extraServices }: any) => {
+      if (id !== bookingId) return;
+      console.log("📨 Extra service response received:", { status, totalPrice });
+      setWaitingServiceApproval(false);
+
+      if (status === "APPROVED") {
+        setJob((prev: any) => prev ? {
+          ...prev,
+          cost: totalPrice,
+          extraServices: extraServices
+        } : prev);
+        Alert.alert("Success", "Extra service approved and added to bill.");
+      } else if (status === "REJECTED") {
+        Alert.alert("Rejected", "Extra service proposal was rejected by customer.");
+        // We might want to update the local extraServices array to move it to REJECTED 
+        // if we want to show rejection in real-time without fetching from API
+        if (extraServices) {
+          setJob((prev: any) => prev ? { ...prev, extraServices } : prev);
+        }
+      }
+    };
+
     socket.on("service-approved", onServiceApproved);
     socket.on("service-rejected", onServiceRejected);
+    socket.on("extra-service-response", onExtraServiceResponse);
 
     return () => {
       socket.off("service-approved", onServiceApproved);
       socket.off("service-rejected", onServiceRejected);
+      socket.off("extra-service-response", onExtraServiceResponse);
     };
   }, [bookingId]);
 
@@ -663,13 +696,30 @@ export const EmpBookingScreen = () => {
 
             {/* ✅ Job Details Section */}
             <UserDetailContainer
-              name={job?.name || 'Unknown'}
-              serviceCategoryName={job?.serviceCategoryName || '-'}
-              cost={`₹ ${job?.cost}` || '-'}
-              address={job?.address || '-'}
-              employeeCount={job?.employeeCount || '1'}
-              durationInMinutes={job?.durationInMinutes || 'Not Provided'}
+              name={job?.name || "Unknown"}
+              serviceCategoryName={job?.serviceCategoryName || "-"}
+              cost={`₹ ${job?.cost}` || "-"}
+              address={job?.address || "-"}
+              employeeCount={job?.employeeCount || "1"}
+              durationInMinutes={job?.durationInMinutes || "Not Provided"}
             />
+
+            {/* ✅ Extra Services List (Show if any are approved) */}
+            {job?.extraServices?.some((s: any) => s.status === "APPROVED") && (
+              <View style={styles.extraServicesContainer}>
+                <Text style={styles.extraServicesTitle}>Extra Services Added:</Text>
+                {job.extraServices
+                  .filter((s: any) => s.status === "APPROVED")
+                  .map((service: any, idx: number) => (
+                    <View key={idx} style={styles.extraServiceItem}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                        <Text style={styles.extraServiceName}>• {service.serviceName}</Text>
+                        <Text style={styles.extraServicePrice}>₹{service.price}</Text>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            )}
 
             {/* ⚠ Report Issue Button */}
             <TouchableOpacity
@@ -920,9 +970,9 @@ const styles = StyleSheet.create({
     borderColor: '#DBEAFE',
   },
   paymentIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -932,6 +982,32 @@ const styles = StyleSheet.create({
   paymentButtonText: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  extraServicesContainer: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  extraServicesTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  extraServiceItem: {
+    marginBottom: 4,
+  },
+  extraServiceName: {
+    fontSize: 14,
+    color: '#475569',
+  },
+  extraServicePrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0D9488',
   },
   otpContainer: {
     backgroundColor: '#fff',

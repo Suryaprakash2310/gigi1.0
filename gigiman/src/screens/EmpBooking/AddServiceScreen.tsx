@@ -14,6 +14,7 @@ import apiClient from "@/api/client";
 import { AppText } from "@/components/ui/Text";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useProviderBooking } from "@/context/ProviderBookingContext";
 
 const { width } = Dimensions.get("window");
 
@@ -24,6 +25,7 @@ export default function AddServiceScreen() {
   const [providerId, setProviderId] = useState<string | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { setWaitingServiceApproval } = useProviderBooking();
 
   // ⭐ dialog state
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -110,6 +112,7 @@ export default function AddServiceScreen() {
       employeeId: providerId,
     });
 
+    setWaitingServiceApproval(true);
     setConfirmVisible(false);
     setSelectedService(null);
 
