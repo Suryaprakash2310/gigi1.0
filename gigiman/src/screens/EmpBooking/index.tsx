@@ -58,7 +58,9 @@ export const EmpBookingScreen = () => {
   const { bookingId } = route.params ?? {};
 
   const handleCashPayment = async () => {
+    if (isSubmitting) return;
     try {
+      setIsSubmitting(true);
       const res = await paymentSuccessApi({
         bookingId: bookingId,
         paymentMethod: "CASH",
@@ -74,7 +76,7 @@ export const EmpBookingScreen = () => {
       //   navigation.navigate("BookingCompleted", {
       //   bookingId: job._id,
       // });
-      await setActiveBookingId(null);
+      resetBookingState();
       console.log("🗑 Active booking removed");
       navigation.replace("BookingCompleted");
 
@@ -83,12 +85,15 @@ export const EmpBookingScreen = () => {
         "Payment Failed",
         err?.response?.data?.message || "Something went wrong"
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
   const handleRazorpayPayment = async () => {
+    if (isSubmitting) return;
     try {
-
-      const res = await createOrder(bookingId!, Number(job.cost));
+      setIsSubmitting(true);
+      const res = await createOrder(bookingId!, Number(job?.totalPrice ?? job?.cost));
       console.log("🧾 Order created:", res.data);
       const orderId = res.data.orderId;
 
@@ -125,6 +130,8 @@ export const EmpBookingScreen = () => {
 
     } catch (err: any) {
       Alert.alert("Payment cancelled or failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -138,6 +145,7 @@ export const EmpBookingScreen = () => {
 
   // ✅ State
   const [otp, setOtp] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // const [otpVerified, setOtpVerified] = useState(false);
   const [partsFilled, setPartsFilled] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
@@ -165,6 +173,7 @@ export const EmpBookingScreen = () => {
     setPartRequest,
     activeBookingId,
     setActiveBookingId,
+    resetBookingState,
     partsCollected,
     setPartsCollected,
   } = useProviderBooking();
@@ -320,9 +329,10 @@ export const EmpBookingScreen = () => {
     }
   };
 
-  // Run once on mount
+  // Run once on mount or when bookingId changes
   useEffect(() => {
     if (bookingId) {
+      setActiveBookingId(bookingId); // 🔥 Fix BUG-012: Ensure context is aware before API fetch completes
       hydrateFromApi(bookingId);
     } else {
       setLoading(false);
@@ -840,27 +850,41 @@ export const EmpBookingScreen = () => {
                   <Text style={styles.paymentTitle}>Payment & Completion</Text>
 
                   <TouchableOpacity
-                    style={[styles.paymentButton, styles.cashButton]}
+                    style={[styles.paymentButton, styles.cashButton, isSubmitting && { opacity: 0.7 }]}
                     onPress={handleCashPayment}
                     activeOpacity={0.8}
+                    disabled={isSubmitting}
                   >
                     <View style={styles.paymentIconCircle}>
                       <Ionicons name="cash-outline" size={22} color="#166534" />
                     </View>
-                    <Text style={[styles.paymentButtonText, { color: '#166534' }]}>Pay & Complete (Cash)</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
+                    <Text style={[styles.paymentButtonText, { color: '#166534' }]}>
+                      {isSubmitting ? "Processing..." : "Pay & Complete (Cash)"}
+                    </Text>
+                    {!isSubmitting ? (
+                      <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
+                    ) : (
+                      <ActivityIndicator size="small" color="#166534" style={{ marginLeft: 'auto' }} />
+                    )}
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.paymentButton, styles.onlineButton]}
+                    style={[styles.paymentButton, styles.onlineButton, isSubmitting && { opacity: 0.7 }]}
                     onPress={handleRazorpayPayment}
                     activeOpacity={0.8}
+                    disabled={isSubmitting}
                   >
                     <View style={styles.paymentIconCircle}>
                       <Ionicons name="card-outline" size={22} color="#1e40af" />
                     </View>
-                    <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>Pay Online & Complete</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
+                    <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>
+                      {isSubmitting ? "Processing..." : "Pay Online & Complete"}
+                    </Text>
+                    {!isSubmitting ? (
+                      <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
+                    ) : (
+                      <ActivityIndicator size="small" color="#1e40af" style={{ marginLeft: 'auto' }} />
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>

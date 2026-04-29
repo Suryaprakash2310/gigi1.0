@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { AppState } from "react-native";
 import { socket } from "@/socket/socket";
 import { useProviderBooking } from "@/context/ProviderBookingContext";
@@ -18,19 +18,27 @@ export default function BookingSocketListener() {
         workingMode,
     } = useProviderBooking();
     const navigation = useNavigation<TabNavProp>();
-
     const { userRole } = useContext(AuthContext);
 
     useEffect(() => {
         console.log("🧠 BookingSocketListener mounted");
     }, []);
 
+    // ✅ Keep refs in sync so socket handlers always read latest values
+    //    without needing to re-subscribe on every workingMode/userRole change.
+    const workingModeRef = useRef(workingMode);
+    const userRoleRef = useRef(userRole);
+
+    useEffect(() => { workingModeRef.current = workingMode; }, [workingMode]);
+    useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
+
     /* ======================================================
        BOOKING REQUEST LISTENERS
+       Registered once — reads live values via refs.
     ====================================================== */
     useEffect(() => {
         const handleNewBooking = async (payload: any) => {
-            if (!workingMode) return;
+            if (!workingModeRef.current) return;   // ✅ always fresh
             console.log("🔥 EVENT RECEIVED");
             console.log("📥 New booking request:", payload);
             if (!payload || !payload.bookingId) return;
@@ -45,21 +53,19 @@ export default function BookingSocketListener() {
                 expiresAt: Date.now() + 50000,
             });
 
-            // 🔊 Play alert sound on new booking
             await playBookingSound();
         };
 
         const handleJobAssigned = async (payload: any) => {
+            if (!workingModeRef.current) return; // ✅ Guard added
             console.log("📦 Job assigned:", payload.bookingId);
             removeBookingRequest(payload.bookingId);
-
-            // 🔇 Stop sound when job is assigned away
             await stopBookingSound();
         };
 
         const handleTeamBooking = async (payload: any) => {
-            if (userRole !== UserRole.MULTI_EMPLOYEE) return;
-            if (!workingMode) return;
+            if (userRoleRef.current !== UserRole.MULTI_EMPLOYEE) return; // ✅ always fresh
+            if (!workingModeRef.current) return;                         // ✅ always fresh
 
             console.log("🔥 Team booking:", payload);
 
@@ -76,7 +82,6 @@ export default function BookingSocketListener() {
                 expiresAt: Date.now() + 50000,
             });
 
-            // 🔊 Play alert sound on team booking
             await playBookingSound();
         };
 
@@ -89,7 +94,7 @@ export default function BookingSocketListener() {
             socket.off("job-assigned", handleJobAssigned);
             socket.off("team-booking-request", handleTeamBooking);
         };
-    }, [workingMode, userRole]);
+    }, []); // ✅ Empty deps — registered once, refs keep values current
 
     /* ======================================================
        LEADER OTP READY

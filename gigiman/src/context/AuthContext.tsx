@@ -148,13 +148,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 };
 
 
-  // Logout → Clear everything
+  // Logout → Clear all session data so shared devices don't leak state
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove(['userToken', 'userRole']);
+      await AsyncStorage.multiRemove([
+        'userToken',
+        'userRole',
+        'providerId',
+        'activeBookingId',
+        'otpVerified',
+      ]);
       setUserToken(null);
       setUserRole(null);
-      // Optionally: clear profile context if needed (handled by ProfileContext effect)
     } catch (error) {
       console.error('Logout error:', error);
     }
