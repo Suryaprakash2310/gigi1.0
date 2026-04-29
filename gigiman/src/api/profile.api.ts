@@ -80,8 +80,12 @@ export interface BookingHistoryResponse {
 
 export const ProfileAPI = {
   async getProfile(token: string): Promise<EmployeeProfile> {
-    const res = await apiClient.get<GetProfileResponse>(`/profile/getprofile`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await apiClient.get<GetProfileResponse>(`/profile/getprofile?t=${Date.now()}`, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
     });
     return res.data.employee;
   },

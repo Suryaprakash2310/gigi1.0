@@ -128,24 +128,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Login → Save both token + role
   const login = async (role: string, token?: string, id?: string) => {
     console.log("🔐 Logging in:", { role, token, id });
-  try {
-    if (!token || !role) {
-      throw new Error("Invalid login data");
+    try {
+      if (!token || !role) {
+        throw new Error("Invalid login data");
+      }
+
+      await AsyncStorage.setItem("userToken", token);
+      await AsyncStorage.setItem("userRole", role);
+
+      if (id) {
+        await AsyncStorage.setItem("providerId", id);
+      }
+
+      setUserToken(token);
+      setUserRole(role);
+    } catch (error) {
+      console.error("Login error:", error);
     }
-
-    await AsyncStorage.setItem("userToken", token);
-    await AsyncStorage.setItem("userRole", role);
-
-    if (id) {
-      await AsyncStorage.setItem("providerId", id);
-    }
-
-    setUserToken(token);
-    setUserRole(role);
-  } catch (error) {
-    console.error("Login error:", error);
-  }
-};
+  };
 
 
   // Logout → Clear all session data so shared devices don't leak state
@@ -157,6 +157,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         'providerId',
         'activeBookingId',
         'otpVerified',
+        'token',
+        'employeeId',
       ]);
       setUserToken(null);
       setUserRole(null);
