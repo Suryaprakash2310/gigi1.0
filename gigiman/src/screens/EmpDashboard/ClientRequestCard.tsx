@@ -9,6 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import { theme } from '../../theme/theme';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
@@ -65,10 +66,49 @@ export const ClientRequestCard: React.FC<ClientRequestCardProps> = ({
   /** animation */
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+  const progressAnim = useRef(new Animated.Value(1)).current;
   const TOTAL_DURATION = 50000; // 50 sec
-const progressAnim = useRef(new Animated.Value(1)).current;
 const [remaining, setRemaining] = useState<number>(0);
 const [expired, setExpired] = useState(false);
+const [displayAddress, setDisplayAddress] = useState<string>(data.address || "");
+
+useEffect(() => {
+  setDisplayAddress(data.address || "");
+  const resolveAddress = async () => {
+    if (!data.address) return;
+    const addrLower = data.address.toLowerCase();
+    let lat, lng;
+
+    if (addrLower === 'current_location' || addrLower === 'current location') {
+      // In dashboard context, we might not have the coordinates directly in 'data'
+      // unless we pass it. If data has coordinates, we can reverse geocode.
+      if ((data as any).coordinates) {
+        lng = (data as any).coordinates[0];
+        lat = (data as any).coordinates[1];
+      }
+    } else if (addrLower.startsWith('coordinates:')) {
+      const parts = data.address.replace(/Coordinates:\s*/i, '').split(',');
+      if (parts.length === 2) {
+        lat = parseFloat(parts[0]);
+        lng = parseFloat(parts[1]);
+      }
+    }
+
+    if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
+      try {
+        const geocodeResult = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (geocodeResult && geocodeResult.length > 0) {
+          const place = geocodeResult[0];
+          const addrText = [place.name, place.street, place.city, place.region].filter(Boolean).join(', ');
+          if (addrText) setDisplayAddress(addrText);
+        }
+      } catch (e) {
+        console.log("Reverse geocoding failed", e);
+      }
+    }
+  };
+  resolveAddress();
+}, [data.address, data]);
 
   useEffect(() => {
     Animated.parallel([
@@ -131,11 +171,11 @@ const [expired, setExpired] = useState(false);
     }
   };
 
-  // const canAccept =
-  //   role !== 'team_owner' ||
-  //   (leader &&
-  //     helpers.length === requiredHelpers &&
-  //     !helpers.includes(leader));
+  const canAccept =
+    role !== 'team_owner' ||
+    (leader !== null &&
+      helpers.length === requiredHelpers &&
+      !helpers.includes(leader));
 
   return (
     <Animated.View
@@ -171,11 +211,11 @@ const [expired, setExpired] = useState(false);
                 WORK : <Text style={styles.value}>{data.serviceCategoryName}</Text>
               </Text>
             )}
-            {data.address && (
+            {displayAddress ? (
               <Text style={styles.infoText}>
-                ADDRESS : <Text style={styles.value}>{data.address}</Text>
+                ADDRESS : <Text style={styles.value}>{displayAddress}</Text>
               </Text>
-            )}
+            ) : null}
             {
               data.cost && (
                 <Text style={styles.infoText}>
@@ -267,17 +307,24 @@ const [expired, setExpired] = useState(false);
         </TouchableOpacity>
 
         <TouchableOpacity
-  activeOpacity={0.8}
-  disabled={expired}
-  style={[
-    styles.acceptBtn,
-    expired && { opacity: 0.4 },
-  ]}
-  onPress={() => {
-    if (expired) return;
-    onAccept?.();
-  }}
->
+          activeOpacity={0.8}
+          disabled={expired || !canAccept}
+          style={[
+            styles.acceptBtn,
+            (expired || !canAccept) && { opacity: 0.4 },
+          ]}
+          onPress={() => {
+            if (expired || !canAccept) return;
+            if (role === 'team_owner' && leader) {
+              onTeamAccept?.({
+                leaderEmpId: leader,
+                helperEmpIds: helpers,
+              });
+            } else {
+              onAccept?.();
+            }
+          }}
+        >
           <Text style={styles.btnText}>
             {role === 'team_owner' ? 'Assign & Accept' : 'Accept'}
           </Text>

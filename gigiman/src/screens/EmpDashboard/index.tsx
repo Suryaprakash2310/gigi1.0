@@ -22,6 +22,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { UserRole } from "@/utils/enums/CommonEnum";
 import { TeamAssignModal } from "@/components/BottomSheets/TeamAssignEmployeeSheet";
 import { useProviderBooking } from "@/context/ProviderBookingContext";
+import { ProfileContext } from "@/context/ProfileContext";
 import { socket } from "@/socket/socket";
 
 type TabNavProp = BottomTabNavigationProp<AppStackParamList, "BookingStack">;
@@ -31,6 +32,7 @@ export const EmpDashboard = () => {
   const navigation = useNavigation<TabNavProp>();
   const insets = useSafeAreaInsets();
   const { userRole } = useContext(AuthContext);
+  const { profile } = useContext(ProfileContext);
 
   const {
     clientRequests,
@@ -46,6 +48,25 @@ export const EmpDashboard = () => {
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [ownerAvailable, setOwnerAvailable] = useState(true);
+  const [fetchedMembers, setFetchedMembers] = useState<any[]>([]);
+  
+  const refreshMembers = async () => {
+    if (isTeam) {
+      try {
+        const { default: apiClient } = await import('@/api/client');
+        const res = await apiClient.get<{ members: any[], ownerAvailable: boolean }>("/multipleemployee/members");
+        setFetchedMembers(res.data.members || []);
+        setOwnerAvailable(res.data.ownerAvailable !== false);
+      } catch (err) {
+        console.error("Failed to load team members:", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    refreshMembers();
+  }, [isTeam, clientRequests.length]); // Refresh when team mode or requests count changes
 
   /* ======================================================
      WORKING MODE TOGGLE (PRODUCTION SAFE)
@@ -105,9 +126,29 @@ export const EmpDashboard = () => {
 
   const handleAccept = async (job: any) => {
     if (isTeam) {
-      // Team owner: open assignment modal, do not navigate here
-      setSelectedJob(job);
-      setAssignModalVisible(true);
+      const teamSize = profile?.members?.length || 0;
+      const totalCapacity = teamSize + 1; // leader + helpers
+
+      // If the team has MORE members than the job requires, they must manually select who goes.
+      if (totalCapacity > job.employeeCount) {
+        // Team owner: open assignment modal
+        setSelectedJob(job);
+        setAssignModalVisible(true);
+        return;
+      }
+
+      // If the team's total capacity is exactly the job requirement (or less),
+      // we can skip the manual assignment modal. The backend will auto-assign.
+      console.log("📤 EMITTING team-accept (auto-assign):", job.id);
+      socket.emit("team-accept", {
+        bookingId: job.id,
+        teamId: profile?._id,
+      });
+
+      removeBookingRequest(job.id);
+      await stopBookingSound();
+      
+      Alert.alert("Job Accepted", "The team has been auto-assigned. Primary employee will be navigated shortly.");
       return;
     }
 
@@ -216,9 +257,27 @@ export const EmpDashboard = () => {
               role={item.isTeam ? "team_owner" : "employee"}
               index={index}
               employeeCount={item.employeeCount}
-              teamMembers={item.teamMembers}
+              teamMembers={
+                profile
+                  ? [
+                      ...(ownerAvailable ? [{ _id: profile._id, fullname: profile.fullname || profile.ownerName || profile.name || "Me (Owner)" }] : []),
+                      ...fetchedMembers,
+                    ]
+                  : fetchedMembers
+              }
               onReject={() => handleReject(item.id)}
               onAccept={() => handleAccept(item)}
+              onTeamAccept={({ leaderEmpId, helperEmpIds }) => {
+                socket.emit("team-accept", {
+                  bookingId: item.id,
+                  teamId: profile?._id,
+                  leaderEmpId,
+                  helperEmpIds,
+                });
+                removeBookingRequest(item.id);
+                stopBookingSound();
+                Alert.alert("Job Accepted", "The team has been assigned. Primary employee will be navigated shortly.");
+              }}
             />
           )}
           contentContainerStyle={{

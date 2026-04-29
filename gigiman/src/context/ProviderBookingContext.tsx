@@ -15,6 +15,7 @@ export interface IncomingBooking {
   teamMembers?: any[];
   teamId?: string;
   expiresAt?: number;
+  coordinates?: number[];
 }
 
 interface PickupDetails {

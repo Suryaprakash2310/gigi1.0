@@ -49,6 +49,7 @@ export default function BookingSocketListener() {
                 work: payload.service,
                 cost: payload.totalPrice,
                 address: payload.address,
+                coordinates: payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates,
                 employeeCount: payload.employeeCount,
                 expiresAt: Date.now() + 50000,
             });
@@ -74,6 +75,7 @@ export default function BookingSocketListener() {
                 name: payload.user?.name,
                 work: payload.service,
                 address: payload.address,
+                coordinates: payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates,
                 employeeCount: payload.employeeCount,
                 isTeam: true,
                 teamMembers: payload.teamMembers,

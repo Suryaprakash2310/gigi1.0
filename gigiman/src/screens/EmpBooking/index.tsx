@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { LiveTrackerModal, EmbeddedTrackingMap } from "../../components/toolshop/LiveTrackerModal";
 import {
@@ -23,6 +23,7 @@ import { UserDetailContainer } from './UserDetailContainer';
 import { theme } from '../../theme/theme';
 import AppHeader from '../../components/AppHeader';
 import OtpInput from '../../components/OtpInput';
+
 import BottomButton from '../../components/Bottom';
 import { BookingStackParamList } from '../../navigation/EmpBookingStack';
 import { AppStackParamList } from '../../navigation/EmployeeStack';
@@ -36,6 +37,7 @@ import { useLiveTracking } from '@/hooks/useLiveTracking';
 import { useProviderBooking } from '@/context/ProviderBookingContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initiateMaskedCall } from '@/api/call.api';
+import { ProfileContext } from '@/context/ProfileContext';
 
 //const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag';
 
@@ -178,6 +180,9 @@ export const EmpBookingScreen = () => {
     setPartsCollected,
   } = useProviderBooking();
 
+  const { profile } = useContext(ProfileContext);
+  const isLeader = !job?.teamLeader || (profile && job.teamLeader._id === profile._id);
+
   const [calling, setCalling] = useState(false);
   const [lastCallTime, setLastCallTime] = useState(0);
 
@@ -257,6 +262,38 @@ export const EmpBookingScreen = () => {
       // 🔍 Debug — confirm exactly what backend returned
       console.log("📊 Backend job status:", status);
       console.log("🔎 Normalized status:", normalizedStatus);
+      // 🔍 Reverse geocode if address is "current_location"
+      if (jobPayload?.address?.toLowerCase() === 'current_location' || jobPayload?.address?.toLowerCase() === 'current location') {
+        try {
+          let lat, lng;
+          
+          if (Array.isArray(jobPayload.coordinates)) {
+            lng = jobPayload.coordinates[0];
+            lat = jobPayload.coordinates[1];
+          } else if (jobPayload.coordinates?.latitude !== undefined) {
+            lat = jobPayload.coordinates.latitude;
+            lng = jobPayload.coordinates.longitude;
+          } else if (Array.isArray(jobPayload.location?.coordinates)) {
+            lng = jobPayload.location.coordinates[0];
+            lat = jobPayload.location.coordinates[1];
+          } else if (Array.isArray(jobPayload.userLocation?.coordinates)) {
+            lng = jobPayload.userLocation.coordinates[0];
+            lat = jobPayload.userLocation.coordinates[1];
+          }
+
+          if (lat !== undefined && lng !== undefined) {
+            const geocodeResult = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (geocodeResult && geocodeResult.length > 0) {
+              const place = geocodeResult[0];
+              const addrText = [place.name, place.street, place.city, place.region].filter(Boolean).join(', ');
+              jobPayload.address = addrText || jobPayload.address;
+            }
+          }
+        } catch (e) {
+          console.log("Reverse geocode failed", e);
+        }
+      }
+
       setJob(jobPayload);
 
       // Shared status constants — single source of truth for comparisons
@@ -704,9 +741,38 @@ export const EmpBookingScreen = () => {
             keyboardShouldPersistTaps="handled"
           >
 
+            {/* ✅ Assigned Team Section */}
+            {(job?.teamLeader || job?.teamHelpers?.length > 0) && (
+              <View style={styles.teamContainer}>
+                <Text style={styles.teamTitle}>Assigned Team</Text>
+                
+                {/* Leader */}
+                {job?.teamLeader && (
+                  <View style={styles.memberItem}>
+                    <Ionicons name="person" size={18} color={theme.colors.primary} />
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{job.teamLeader.fullname || job.teamLeader.storeName || "Leader"}</Text>
+                      <Text style={styles.memberRole}>Leader</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Helpers */}
+                {job?.teamHelpers?.map((helper: any, idx: number) => (
+                  <View key={idx} style={styles.memberItem}>
+                    <Ionicons name="people" size={18} color="#666" />
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{helper.fullname || helper.storeName || "Helper"}</Text>
+                      <Text style={styles.memberRole}>Helper</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* ✅ Job Details Section */}
             <UserDetailContainer
-              name={job?.name || "Unknown"}
+              name={job?.userName || job?.name || "Unknown"}
               serviceCategoryName={job?.serviceCategoryName || "-"}
               cost={`₹ ${job?.cost}` || "-"}
               address={job?.address || "-"}
@@ -731,42 +797,46 @@ export const EmpBookingScreen = () => {
               </View>
             )}
 
-            {/* ⚠ Report Issue Button */}
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#FFF3E0',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 8,
-                marginVertical: 12,
-                borderWidth: 1,
-                borderColor: '#FFE0B2'
-              }}
-              onPress={() => (navigation as any).navigate("ProfileTab", { screen: "RaiseIssue", params: { bookingId } })}
-            >
-              <Ionicons name="warning" size={20} color="#E65100" />
-              <Text style={{ marginLeft: 8, color: '#E65100', fontWeight: '700', fontSize: 15 }}>
-                Report Issue
-              </Text>
-            </TouchableOpacity>
+            {/* ⚠ Report Issue Button (Leader Only) */}
+            {isLeader && (
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#FFF3E0',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  marginVertical: 12,
+                  borderWidth: 1,
+                  borderColor: '#FFE0B2'
+                }}
+                onPress={() => (navigation as any).navigate("ProfileTab", { screen: "RaiseIssue", params: { bookingId } })}
+              >
+                <Ionicons name="warning" size={20} color="#E65100" />
+                <Text style={{ marginLeft: 8, color: '#E65100', fontWeight: '700', fontSize: 15 }}>
+                  Report Issue
+                </Text>
+              </TouchableOpacity>
+            )}
 
-            {/* 📞 Masked Call Button */}
-            <TouchableOpacity
-              style={[styles.callBtn, calling && { opacity: 0.6 }]}
-              onPress={confirmCall}
-              disabled={calling}
-            >
-              <Ionicons name="call" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
-                {calling ? "Connecting..." : "Call Customer"}
-              </Text>
-            </TouchableOpacity>
+            {/* 📞 Masked Call Button (Leader Only) */}
+            {isLeader && (
+              <TouchableOpacity
+                style={[styles.callBtn, calling && { opacity: 0.6 }]}
+                onPress={confirmCall}
+                disabled={calling}
+              >
+                <Ionicons name="call" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+                  {calling ? "Connecting..." : "Call Customer"}
+                </Text>
+              </TouchableOpacity>
+            )}
 
-            {/* ✅ OTP Verification Section */}
-            {!otpVerified && (
+            {/* ✅ OTP Verification Section (Leader Only) */}
+            {!otpVerified && isLeader && (
               <View style={styles.otpContainer}>
                 {/* Tracking Indicator & Navigation Map */}
                 <View style={{ marginBottom: 16, width: '100%' }}>
@@ -794,99 +864,94 @@ export const EmpBookingScreen = () => {
               </View>
             )}
 
-            {/* ✅ After OTP Verified */}
-            {/* 1️⃣ Parts / Payment Section */}
+            {/* ✅ After OTP Verified (Actions - Leader Only) */}
             {otpVerified && (
               <View style={{ marginVertical: 16 }}>
-                <Text style={[styles.subTitle, { marginBottom: 12 }]}>
-                  Job Actions & Completion
-                </Text>
-
-                {/* 🛠 Action Cards Grid */}
-                <View style={styles.actionGrid}>
-                  <TouchableOpacity
-                    style={styles.actionCard}
-                    onPress={handlePartsPress}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.actionCardIcon, { backgroundColor: '#E0F2F1' }]}>
-                      <Ionicons name="construct-sharp" size={24} color="#00796B" />
-                    </View>
-                    <Text style={styles.actionCardTitle}>Add Parts</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.actionCard, waitingServiceApproval && { opacity: 0.6 }]}
-                    onPress={() =>
-                      !waitingServiceApproval &&
-                      navigation.navigate("AddService", {
-                        bookingId,
-                        domainServiceId: job?.domainServiceId,
-                      })
-                    }
-                    disabled={waitingServiceApproval}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.actionCardIcon, { backgroundColor: '#E3F2FD' }]}>
-                      <Ionicons name="add-circle-sharp" size={26} color="#1976D2" />
-                    </View>
-                    <Text style={styles.actionCardTitle}>
-                      {waitingServiceApproval ? "Waiting..." : "Add Service"}
+                {isLeader ? (
+                  <>
+                    <Text style={[styles.subTitle, { marginBottom: 12 }]}>
+                      Job Actions & Completion
                     </Text>
-                  </TouchableOpacity>
-                </View>
 
-                {waitingServiceApproval && (
-                  <View style={styles.waitingBanner}>
-                    <Ionicons name="time-outline" size={18} color="#92400E" style={{ marginRight: 8 }} />
-                    <Text style={styles.waitingText}>
-                      Waiting for customer approval…
+                    {/* 🛠 Action Cards Grid */}
+                    <View style={styles.actionGrid}>
+                      <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={handlePartsPress}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.actionCardIcon, { backgroundColor: '#E0F2F1' }]}>
+                          <Ionicons name="construct-sharp" size={24} color="#00796B" />
+                        </View>
+                        <Text style={styles.actionCardTitle}>Add Parts</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.actionCard, waitingServiceApproval && { opacity: 0.6 }]}
+                        onPress={() =>
+                          !waitingServiceApproval &&
+                          navigation.navigate("AddService", {
+                            bookingId,
+                            domainServiceId: job?.domainServiceId,
+                          })
+                        }
+                        disabled={waitingServiceApproval}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.actionCardIcon, { backgroundColor: '#E3F2FD' }]}>
+                          <Ionicons name="add-circle-sharp" size={26} color="#1976D2" />
+                        </View>
+                        <Text style={styles.actionCardTitle}>
+                          {waitingServiceApproval ? "Waiting..." : "Add Service"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {waitingServiceApproval && (
+                      <View style={styles.waitingBanner}>
+                        <Ionicons name="time-outline" size={18} color="#92400E" style={{ marginRight: 8 }} />
+                        <Text style={styles.waitingText}>
+                          Waiting for customer approval…
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* 💳 Payment & Completion Section */}
+                    <View style={styles.paymentSection}>
+                      <Text style={styles.paymentTitle}>Payment & Completion</Text>
+
+                      <TouchableOpacity
+                        style={[styles.paymentButton, styles.cashButton]}
+                        onPress={handleCashPayment}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.paymentIconCircle}>
+                          <Ionicons name="cash-outline" size={22} color="#166534" />
+                        </View>
+                        <Text style={[styles.paymentButtonText, { color: '#166534' }]}>Pay & Complete (Cash)</Text>
+                        <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.paymentButton, styles.onlineButton]}
+                        onPress={handleRazorpayPayment}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.paymentIconCircle}>
+                          <Ionicons name="card-outline" size={22} color="#1e40af" />
+                        </View>
+                        <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>Pay Online & Complete</Text>
+                        <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <View style={{ backgroundColor: '#f0f9ff', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#bae6fd' }}>
+                    <Text style={{ color: '#0369a1', fontWeight: '600', textAlign: 'center' }}>
+                      Work is in progress. Please assist the team leader.
                     </Text>
                   </View>
                 )}
-
-                {/* 💳 Payment & Completion Section */}
-                <View style={styles.paymentSection}>
-                  <Text style={styles.paymentTitle}>Payment & Completion</Text>
-
-                  <TouchableOpacity
-                    style={[styles.paymentButton, styles.cashButton, isSubmitting && { opacity: 0.7 }]}
-                    onPress={handleCashPayment}
-                    activeOpacity={0.8}
-                    disabled={isSubmitting}
-                  >
-                    <View style={styles.paymentIconCircle}>
-                      <Ionicons name="cash-outline" size={22} color="#166534" />
-                    </View>
-                    <Text style={[styles.paymentButtonText, { color: '#166534' }]}>
-                      {isSubmitting ? "Processing..." : "Pay & Complete (Cash)"}
-                    </Text>
-                    {!isSubmitting ? (
-                      <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
-                    ) : (
-                      <ActivityIndicator size="small" color="#166534" style={{ marginLeft: 'auto' }} />
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.paymentButton, styles.onlineButton, isSubmitting && { opacity: 0.7 }]}
-                    onPress={handleRazorpayPayment}
-                    activeOpacity={0.8}
-                    disabled={isSubmitting}
-                  >
-                    <View style={styles.paymentIconCircle}>
-                      <Ionicons name="card-outline" size={22} color="#1e40af" />
-                    </View>
-                    <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>
-                      {isSubmitting ? "Processing..." : "Pay Online & Complete"}
-                    </Text>
-                    {!isSubmitting ? (
-                      <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
-                    ) : (
-                      <ActivityIndicator size="small" color="#1e40af" style={{ marginLeft: 'auto' }} />
-                    )}
-                  </TouchableOpacity>
-                </View>
               </View>
             )}
             {/* ✅ Pickup Details (Shown regardless of OTP status if available) */}
@@ -1153,5 +1218,41 @@ const styles = StyleSheet.create({
     color: "#92400E",
     fontWeight: "600",
     textAlign: "center",
+  },
+  teamContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    elevation: 1,
+  },
+  teamTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a2e4a',
+    marginBottom: 12,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+    borderRadius: 8,
+  },
+  memberInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  memberRole: {
+    fontSize: 12,
+    color: '#64748B',
   },
 });
