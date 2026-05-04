@@ -9,6 +9,7 @@ import { BookingHistoryProvider } from '@/context/BookingHistoryContext';
 import { WalletProvider } from '@/context/WalletContext';
 import { SocketProvider } from '@/socket/SocketProvider';
 import BookingSocketListener from '@/listeners/BookingListener';
+import { NotificationListener } from '@/listeners/NotificationListener';
 import { ProviderBookingProvider } from '@/context/ProviderBookingContext';
 import { ToolShopProvider } from '@/context/ToolShopContext';
 
@@ -20,6 +21,7 @@ export default function App() {
           <BookingHistoryProvider>
             <WalletProvider>
               <SocketProvider>
+                <NotificationListener />
                 <ToolShopProvider>
                   <ProviderBookingProvider>
                     <BottomSheetProvider>

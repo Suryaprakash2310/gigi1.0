@@ -7,7 +7,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { EmpBookingScreen } from '../screens/EmpBooking/index';
 //import ToolShopScreen from '../screens/ToolShopScreen';
 import { EmpDashboard } from '../screens/EmpDashboard';
-import { theme } from '../theme/theme'; 
+import { theme } from '../theme/theme';
 import EmpBookingStack, { BookingStackParamList } from './EmpBookingStack';
 import EmpProfileScreen from '../screens/profile/EmpProfileScreen';
 import { AddEmployeeScreen } from '@/screens/team/TeamEmployeeScreen';
@@ -79,7 +79,12 @@ export default function AppStack() {
       <Tab.Screen name="BookingStack" component={EmpBookingStack} />
       <Tab.Screen name="Pocket" component={PocketStack} />
       <Tab.Screen name="ProfileTab" component={EmpProfileStack} />
-      <Tab.Screen name="CommissionTab" component={CommissionStack} />
+      {/* <Tab.Screen name="CommissionTab" component={CommissionStack} /> */}
+      {/* <Tab.Screen 
+        name="NotificationScreen" 
+        component={NotificationScreen} 
+        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} 
+      /> */}
     </Tab.Navigator>
   );
 }

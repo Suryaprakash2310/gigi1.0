@@ -8,9 +8,7 @@ import TextInputField from '../components/TextInput';
 import TextAreaField from '../components/TextArea';
 import { useTranslation } from 'react-i18next';
 import { BottomSheetType, useBottomSheet } from '../context/BottomSheetContext';
-
-
-
+import { useNavigation } from '@react-navigation/native';
 
 interface Employee {
   id: string;
@@ -21,6 +19,7 @@ interface Employee {
 export default function HomeScreen() {
   const { logout } = useContext(AuthContext);
   const theme = useTheme();
+  const navigation = useNavigation();
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [error, setError] = useState('');
@@ -29,7 +28,6 @@ export default function HomeScreen() {
   const [formData, setFormData] = useState<{ employees: Employee[] }>({
     employees: [],
   });
-
 
 // open sheet with initialSelected + callback
 const openAddEmployees = () => {
@@ -45,9 +43,6 @@ const removeEmployee = (id: string) => {
   setFormData(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== id) }));
 };
 
-
-
-
   return (
     <>
     <View>
@@ -57,6 +52,7 @@ const removeEmployee = (id: string) => {
   showBack
   rightIcon="notifications-outline"
   onBackPress={() =>{}}
+  onRightPress={() => navigation.navigate("NotificationScreen" as never)}
 />
 
 

@@ -1,6 +1,6 @@
-// src/navigation/RootNavigator.tsx
 import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../context/AuthContext';
 import AuthStack from './AuthStack';
 import EmployeeStack from './EmployeeStack';
@@ -9,13 +9,13 @@ import { UserRole } from '../utils/enums/CommonEnum';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BookingSocketListener from '@/listeners/BookingListener';
+import NotificationScreen from '../screens/NotificationScreen';
 
-// import SplashScreen from '../screens/SplashScreen';
+const RootStack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { userToken, userRole, isLoading } = useContext(AuthContext);
 
-  //if (isLoading) return <SplashScreen />; // or return null while loading
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -24,21 +24,25 @@ export default function RootNavigator() {
     );
   }
 
-
   return (
     <SafeAreaProvider>
-    <NavigationContainer>
-       <BookingSocketListener />
-      {!userToken ? (
-        <AuthStack />
-      ) : userRole === UserRole.SINGLE_EMPLOYEE || userRole === UserRole.MULTI_EMPLOYEE ? (
-        <EmployeeStack />
-      ) : userRole === UserRole.TOOL_SHOP ? (
-        <ToolShopStack />
-      ) : (
-        <AuthStack />
-      )}
-    </NavigationContainer>
+      <NavigationContainer>
+        <BookingSocketListener />
+        {!userToken ? (
+          <AuthStack />
+        ) : (
+          <RootStack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
+            {userRole === UserRole.SINGLE_EMPLOYEE || userRole === UserRole.MULTI_EMPLOYEE ? (
+              <RootStack.Screen name="EmployeeTabs" component={EmployeeStack} />
+            ) : userRole === UserRole.TOOL_SHOP ? (
+              <RootStack.Screen name="ToolShopTabs" component={ToolShopStack} />
+            ) : (
+              <RootStack.Screen name="AuthFallback" component={AuthStack} />
+            )}
+            <RootStack.Screen name="NotificationScreen" component={NotificationScreen} />
+          </RootStack.Navigator>
+        )}
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }

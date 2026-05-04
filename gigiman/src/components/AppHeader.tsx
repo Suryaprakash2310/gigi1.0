@@ -1,21 +1,15 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  Dimensions,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
+import { useNotificationStore } from '../store/notification.store';
 
 const { width } = Dimensions.get('window');
 
 interface AppHeaderProps {
-  title?: string;    //this is for the app header section name 
-  subtitle?: string;   // this is for the below section of app header
+  title?: string;
+  subtitle?: string;
   showBack?: boolean;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onBackPress?: () => void;
@@ -25,12 +19,6 @@ interface AppHeaderProps {
   elevation?: number;
 }
 
-/**
- * 🎯 Modern Onboarding Header
- * - No image or progress bar
- * - Large title with subtitle below
- * - Back + optional right icon
- */
 export default function AppHeader({
   title = '',
   subtitle,
@@ -43,6 +31,7 @@ export default function AppHeader({
   elevation = 0,
 }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
+  const unreadCount = useNotificationStore(state => state.unreadCount);
 
   return (
     <View
@@ -56,24 +45,27 @@ export default function AppHeader({
         },
       ]}
     >
-      {/* Top Row: Back + Right Icon */}
       <View style={styles.topRow}>
         {showBack ? (
           <TouchableOpacity onPress={onBackPress} style={styles.iconButton}>
-            <Ionicons
-              name={'chevron-back'}
-              size={24}
-              color={theme.colors.text}
-            />
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
         )}
+
         {title ? <Text style={styles.title}>{title}</Text> : null}
 
         {rightIcon ? (
           <TouchableOpacity onPress={onRightPress} style={styles.iconButton}>
             <Ionicons name={rightIcon} size={24} color={theme.colors.text} />
+            {rightIcon === 'notifications-outline' && unreadCount > 0 && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
@@ -116,5 +108,22 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     ...theme.typography.body,
     textAlign: 'left',
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF3B30',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
 });

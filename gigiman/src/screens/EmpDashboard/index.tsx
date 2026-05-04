@@ -231,7 +231,12 @@ export const EmpDashboard = () => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Gigiman" showBack={false} />
+      <AppHeader
+        title="Gigiman"
+        showBack={false}
+        rightIcon="notifications-outline"
+        onRightPress={() => navigation.navigate("NotificationScreen" as never)}
+      />
       {renderHeader()}
 
       {!workingMode ? (
