@@ -23,7 +23,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icons/logo.jpeg",
         "backgroundColor": "#ffffff"
       },
       "package": "com.suryaprakash23.gigiman"
