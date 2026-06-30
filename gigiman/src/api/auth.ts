@@ -20,13 +20,13 @@ export const AuthAPI = {
     return res.data;
   },
 
-  verifyOtp: async (phoneNo: string, otp: string) => {
-    const res = await apiClient.post<VerifyOtpResponse>('/auth/verify-otp', { phoneNo, otp });
+  verifyOtp: async (phoneNo: string, firebaseToken: string) => {
+    const res = await apiClient.post<VerifyOtpResponse>('/auth/verify-otp', { phoneNo, firebaseToken });
 
     if (res.data?.token) {
       await AsyncStorage.setItem('token', res.data.token);
       await AsyncStorage.setItem('userRole', res.data.role);
-      await AsyncStorage.setItem('employeeId', res.data.id);
+      await AsyncStorage.setItem('employeeId', res.data.id || '');
     }
 
     return res.data;

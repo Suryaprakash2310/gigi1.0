@@ -1,7 +1,7 @@
 import React, { useRef, useState, useContext, useEffect } from 'react';
 import {
   View, Text, StyleSheet, KeyboardAvoidingView, Platform,
-  TouchableWithoutFeedback, Dimensions, Alert, ActivityIndicator
+  TouchableWithoutFeedback, Dimensions, Alert, Keyboard
 } from 'react-native';
 import CustomButton from '../../components/Bottom';
 import { theme } from '../../theme/theme';
@@ -12,88 +12,105 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthAPI } from '../../api/auth';
 import { AuthContext } from '../../context/AuthContext';
 import { UserRole } from '@/utils/enums/CommonEnum';
+import auth from '@react-native-firebase/auth';
 
 const { width } = Dimensions.get('window');
 
 export default function OtpLoginScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { phone, otp: prefilledOtp } = route.params || {};
+  const { phone, confirmation: initialConfirmation } = route.params || {};
+  const [confirmation, setConfirmation] = useState(initialConfirmation);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const otpRef = useRef<OtpInputRef>(null);
   const { login } = useContext(AuthContext); // ✅ Use context login
 
-  // Autofill OTP if passed from previous screen
   useEffect(() => {
-    if (prefilledOtp && otpRef.current) {
-      otpRef.current.setValue(String(prefilledOtp));
-    }
-  }, [prefilledOtp]);
+    return () => {
+      otpRef.current?.reset();
+    };
+  }, []);
 
   const handleOtpComplete = (enteredOtp: string) => setOtp(enteredOtp);
 
-  
   const handleVerifyOtp = async () => {
-  if (otp.length !== 4) {
-    Alert.alert('Invalid OTP', 'Please enter the 4-digit OTP.');
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const res = await AuthAPI.verifyOtp(phone.trim(), otp.trim());
-
-    /**
-     * EXPECTED BACKEND RESPONSE:
-     * {
-     *   token,
-     *   role,
-     *   employee?: { _id }
-     * }
-     */
-
-    if (!res?.token || !res?.role) {
-      throw new Error("Invalid login response");
+    if (!/^\d{6}$/.test(otp)) {
+      Alert.alert('Invalid OTP', 'Please enter a valid 6-digit numeric OTP.');
+      return;
     }
 
-    // 🔴 IMPORTANT: extract employeeId safely
-    //const employeeId = res.id ? res.id : null;
+    try {
+      setLoading(true);
 
-    // 🔥 SINGLE login call — THIS IS THE FIX
-    await login(res.role, res.token, res.id);
+      if (!confirmation) {
+        throw new Error("Missing Firebase confirmation object");
+      }
 
-    Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
-    // Navigation handled by RootNavigator
+      console.log('Verifying Firebase OTP...');
+      const userCredential = await confirmation.confirm(otp);
+      const firebaseToken = await userCredential.user.getIdToken();
 
-  } catch (error: any) {
-    Alert.alert(
-      'Error',
-      error.response?.data?.message || 'OTP verification failed'
-    );
-    otpRef.current?.reset();
-  } finally {
-    setLoading(false);
-  }
-};
+      if (!firebaseToken) {
+        throw new Error("Failed to get Firebase token.");
+      }
+
+      console.log('Firebase verified. Verifying with backend...');
+      const res = await AuthAPI.verifyOtp(phone, firebaseToken);
+
+      if (!res?.token || !res?.role) {
+        throw new Error("Invalid login response from backend");
+      }
+
+      await login(res.role, res.token, res.id);
+
+      Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
+
+    } catch (error: any) {
+      console.error('Verify OTP error:', error);
+      if (error.code === 'auth/too-many-requests') {
+        Alert.alert('Verification Failed', 'Too many requests. Please try again later.');
+      } else if (error.code === 'auth/invalid-verification-code') {
+        Alert.alert('Verification Failed', 'Invalid verification code. Please check and try again.');
+      } else if (error.code === 'auth/code-expired') {
+        Alert.alert('Verification Failed', 'The verification code has expired. Please request a new one.');
+      } else {
+        Alert.alert(
+          'Verification Failed',
+          error?.message || error?.response?.data?.message || 'Something went wrong'
+        );
+      }
+      otpRef.current?.reset();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleResend = async () => {
     try {
-      const res: any = await AuthAPI.sendOtp(phone);
-      if (res?.otp && otpRef.current) {
-        otpRef.current.setValue(String(res.otp));
+      setLoading(true);
+      console.log('Resending Firebase OTP...');
+      const newConfirmation = await auth().signInWithPhoneNumber(`+91${phone}`);
+      setConfirmation(newConfirmation);
+      otpRef.current?.reset();
+      Alert.alert('Success', 'OTP resent successfully');
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      if (error.code === 'auth/too-many-requests') {
+        Alert.alert('Error', 'Too many requests. Please try again later.');
+      } else if (error.code === 'auth/invalid-phone-number') {
+        Alert.alert('Error', 'Invalid phone number.');
       } else {
-        Alert.alert('Success', 'OTP resent successfully');
+        Alert.alert('Error', error?.message || 'Failed to resend OTP');
       }
-    } catch {
-      Alert.alert('Error', 'Failed to resend OTP');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <TouchableWithoutFeedback>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1, justifyContent: 'space-between' }}>
           <AppHeader showBack={true} onBackPress={() => navigation.goBack()} />
           <View style={styles.container}>
@@ -105,17 +122,16 @@ export default function OtpLoginScreen() {
               <Text style={styles.editText} onPress={() => navigation.goBack()}>Edit Number</Text>
             </View>
 
-            <OtpInput ref={otpRef} otpLength={4} onOtpComplete={handleOtpComplete} onResend={handleResend} />
+            <OtpInput ref={otpRef} otpLength={6} onOtpComplete={handleOtpComplete} onResend={handleResend} />
           </View>
 
           <View style={styles.buttonWrapper}>
             <CustomButton
               title={loading ? 'Verifying...' : 'Verify'}
               onPress={handleVerifyOtp}
-              disabled={loading || otp.length < 4}
+              disabled={loading || otp.length < 6}
               widthCount={0.85}
             />
-            {loading && <ActivityIndicator color={theme.colors.primary} style={{ marginTop: 10 }} />}
           </View>
         </View>
       </TouchableWithoutFeedback>

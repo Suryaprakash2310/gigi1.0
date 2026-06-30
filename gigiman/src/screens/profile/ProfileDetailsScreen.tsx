@@ -55,10 +55,10 @@ const ProfileDetailsScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          {/* <Image 
-            source={(profile.avatar ? { uri: profile.avatar } : require('@/assets/images/placeholder.png')) as ImageSourcePropType} 
+          <Image 
+            source={(profile.avatar ? { uri: profile.avatar } : require('../../../assets/icon.png')) as ImageSourcePropType} 
             style={styles.avatar} 
-          /> */}
+          />
           <View style={styles.profileMainInfo}>
             <Text style={styles.name}>{profile.fullname || profile.shopName || profile.ownerName}</Text>
             <View style={styles.roleBadge}>

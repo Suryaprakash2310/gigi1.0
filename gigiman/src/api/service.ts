@@ -34,6 +34,13 @@ export const ServiceAPI = {
     return res.data;
   },
 
+  getSubservices: async (domainServiceId: string) => {
+    const res = await apiClient.get(
+      `/auth/showsubservice/${domainServiceId}`
+    );
+    return res.data;
+  },
+
   // addMultipleServices: async (token: string, serviceIds: string[]) => {
   //   const res = await axios.post(
   //     `${API_BASE_URL}/employee/addServices`,

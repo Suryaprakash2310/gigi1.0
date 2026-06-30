@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Dimensions, Alert } from 'react-native';
 import CustomButton from '../../components/Bottom';
 import TextInputField from '../../components/TextInput';
 import { theme } from '../../theme/theme';
@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import AppHeader from '../../components/AppHeader';
 import FloatingLabelInput from '../../components/TextInput';
 import { AuthAPI } from '../../api/auth';
+import auth from '@react-native-firebase/auth';
 
 const { width, height } = Dimensions.get('window');
 type PhoneNavProp = NativeStackNavigationProp<AuthStackParamList, 'phone'>;
@@ -29,19 +30,30 @@ export default function PhoneNumberScreen() {
       return;
     }
     setError('');
-    // TODO: connect backend for OTP generation
+    
     try {
       setLoading(true);
-      const res = await AuthAPI.sendOtp(phone.trim());
-      console.log('OTP Response:', res);
-      // Auto-fill the OTP in the next screen instead of showing an alert
-      navigation.navigate('otp', { phone, otp: res.otp });
-    } catch (e) {
-      alert('Failed to send OTP');
+      // 1. Verify existence with backend
+      console.log('Verifying employee existence...');
+      await AuthAPI.sendOtp(phone);
+
+      // 2. Trigger Firebase SMS OTP
+      console.log('Sending Firebase OTP to +91' + phone);
+      const confirmation = await auth().signInWithPhoneNumber(`+91${phone}`);
+      navigation.navigate('otp', { phone, confirmation });
+    } catch (e: any) {
+      console.error('Failed to authenticate:', e);
+      if (e.code === 'auth/too-many-requests') {
+        Alert.alert('Verification Failed', 'Too many requests. Please try again later.');
+      } else if (e.code === 'auth/invalid-phone-number') {
+        Alert.alert('Verification Failed', 'Invalid phone number.');
+      } else {
+        const errorMsg = e.response?.data?.message || e.message || 'Verification service error';
+        Alert.alert('Verification Failed', errorMsg);
+      }
     } finally {
       setLoading(false);
     }
-    //navigation.navigate('otp', { phone }); // move to next screen
   };
 
   return (
@@ -49,7 +61,7 @@ export default function PhoneNumberScreen() {
       style={{ flex: 1, backgroundColor: '#fff' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <TouchableWithoutFeedback >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1, justifyContent: 'space-between' }}>
 
           {/* Back Arrow */}
@@ -96,7 +108,7 @@ export default function PhoneNumberScreen() {
             <CustomButton
               title={loading ? 'Sending...' : 'Get OTP'}
               onPress={handleGetOtp}
-              disabled={!phone}
+              disabled={!phone || loading}
               widthCount={0.9}
             />
           </View>

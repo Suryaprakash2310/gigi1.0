@@ -16,6 +16,7 @@ export default function BookingSocketListener() {
         addBookingRequest,
         removeBookingRequest,
         workingMode,
+        setActiveBookingId,
     } = useProviderBooking();
     const navigation = useNavigation<TabNavProp>();
     const { userRole } = useContext(AuthContext);
@@ -35,7 +36,7 @@ export default function BookingSocketListener() {
     /* ======================================================
        BOOKING REQUEST LISTENERS
        Registered once — reads live values via refs.
-    ====================================================== */
+     ====================================================== */
     useEffect(() => {
         const handleNewBooking = async (payload: any) => {
             if (!workingModeRef.current) return;   // ✅ always fresh
@@ -47,6 +48,7 @@ export default function BookingSocketListener() {
                 id: payload.bookingId,
                 name: payload.user?.name,
                 work: payload.service,
+                serviceCategoryName: payload.service,
                 cost: payload.totalPrice,
                 address: payload.address,
                 coordinates: payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates,
@@ -74,6 +76,7 @@ export default function BookingSocketListener() {
                 id: payload.bookingId,
                 name: payload.user?.name,
                 work: payload.service,
+                serviceCategoryName: payload.service,
                 address: payload.address,
                 coordinates: payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates,
                 employeeCount: payload.employeeCount,
@@ -87,14 +90,30 @@ export default function BookingSocketListener() {
             await playBookingSound();
         };
 
+        const handleBookingConfirmed = async (payload: any) => {
+            console.log("🟢 Booking confirmed socket event received (Manual assignment):", payload);
+            const bookingId = payload?.booking?._id || payload?.bookingId;
+            if (!bookingId) return;
+
+            await setActiveBookingId(bookingId);
+            await stopBookingSound();
+
+            navigation.navigate("BookingStack", {
+                screen: "Booking",
+                params: { bookingId }
+            });
+        };
+
         socket.on("new-booking-request", handleNewBooking);
         socket.on("job-assigned", handleJobAssigned);
         socket.on("team-booking-request", handleTeamBooking);
+        socket.on("booking-confirmed", handleBookingConfirmed);
 
         return () => {
             socket.off("new-booking-request", handleNewBooking);
             socket.off("job-assigned", handleJobAssigned);
             socket.off("team-booking-request", handleTeamBooking);
+            socket.off("booking-confirmed", handleBookingConfirmed);
         };
     }, []); // ✅ Empty deps — registered once, refs keep values current
 

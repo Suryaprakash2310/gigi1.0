@@ -37,6 +37,11 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
     const [timer, setTimer] = useState<number>(resendTime);
     const inputRefs = useRef<TextInput[]>([]);
 
+    // Reset OTP array when length changes
+    useEffect(() => {
+      setOtp(Array(otpLength).fill(''));
+    }, [otpLength]);
+
     // Timer countdown
     useEffect(() => {
       if (!resendEnabled) return;
@@ -155,30 +160,32 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '80%',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginVertical: 16,
   },
   input: {
-    width: 55,
+    width: 48,
     height: 60,
     borderWidth: 1.5,
     borderColor: '#000',
-    borderRadius: 10,
+    borderRadius: 12,
     textAlign: 'center',
     fontSize: 22,
     color: '#000',
+    marginHorizontal: 4,
   },
   bottomContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 10,
   },
   text: {
     fontSize: 14,

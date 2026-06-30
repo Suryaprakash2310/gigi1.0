@@ -107,13 +107,11 @@ const ProfileScreen = ({ navigation }: any) => {
       { key: 'settings', icon: 'settings-outline', title: 'Settings', onPress: () => navigation.navigate('SettingsScreen') },
       { key: 'logout', icon: 'log-out-outline', title: 'Logout' },
     ];
-    // const headerProps = {
-    //   scrollY,
-    //   name: profile.shopName || profile.ownerName,
-    //   subtitle: 'Tool Shop',
-    //   onEdit: () => navigation.navigate("EditProfile"),
-    //   avatar: profile.avatar || undefined,
-    // };
+    const headerProps = {
+      name: profile?.shopName || profile?.ownerName || '',
+      subtitle: 'Tool Shop',
+      avatar: profile?.avatar || undefined,
+    };
     return (
       <View style={styles.safeArea}>
         <AppHeader title="Profile" />
@@ -130,15 +128,18 @@ const ProfileScreen = ({ navigation }: any) => {
         >
           {/* Simple Header */}
           <View style={styles.simpleHeader}>
-            {/* <Image 
-               source={(headerProps.avatar ? { uri: headerProps.avatar } : require('@/assets/images/placeholder.png')) as ImageSourcePropType} 
-               style={styles.simpleAvatar} 
-             /> */}
-            {/* <View style={styles.headerTextCol}>
+            <Image 
+              source={(headerProps.avatar ? { uri: headerProps.avatar } : require('../../../assets/icon.png')) as ImageSourcePropType} 
+              style={styles.simpleAvatar} 
+            />
+            <View style={styles.headerTextCol}>
               <Text style={styles.simpleName}>{headerProps.name}</Text>
               <Text style={styles.simpleRole}>{headerProps.subtitle}</Text>
-            </View> */}
-            {profile?.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} />}
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate("EditProfile")} style={{ padding: 4 }}>
+              <Ionicons name="create-outline" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+            {profile?.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} style={{ marginLeft: 8 }} />}
           </View>
 
           {renderOfflineBanner()}
@@ -203,11 +204,11 @@ const ProfileScreen = ({ navigation }: any) => {
       { key: 'settings', icon: 'settings-outline', title: 'Settings', onPress: () => navigation.navigate('SettingsScreen') },
       { key: 'logout', icon: 'log-out-outline', title: 'Logout' },
     ];
-    // const headerProps = {
-    //   name: profile?.fullname || profile?.ownerName || '',
-    //   subtitle: userRole === UserRole.MULTI_EMPLOYEE ? 'Service Team' : 'Service Provider',
-    //   avatar: profile?.avatar,
-    // };
+    const headerProps = {
+      name: profile?.fullname || profile?.ownerName || '',
+      subtitle: userRole === UserRole.MULTI_EMPLOYEE ? 'Service Team' : 'Service Provider',
+      avatar: profile?.avatar,
+    };
     return (
       <View style={styles.safeArea}>
         <AppHeader title="Profile"  />
@@ -218,15 +219,18 @@ const ProfileScreen = ({ navigation }: any) => {
         >
           {/* Simple Header */}
           <View style={styles.simpleHeader}>
-            {/* <Image
-              source={(headerProps.avatar ? { uri: headerProps.avatar } : require('@/assets/images/placeholder.png')) as ImageSourcePropType}
+            <Image
+              source={(headerProps.avatar ? { uri: headerProps.avatar } : require('../../../assets/icon.png')) as ImageSourcePropType}
               style={styles.simpleAvatar}
-            /> */}
-            {/* <View style={styles.headerTextCol}>
+            />
+            <View style={styles.headerTextCol}>
               <Text style={styles.simpleName}>{headerProps.name}</Text>
               <Text style={styles.simpleRole}>{headerProps.subtitle}</Text>
-            </View> */}
-            {profile?.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} />}
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate("EditProfile")} style={{ padding: 4 }}>
+              <Ionicons name="create-outline" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+            {profile?.verified === "Yes" && <Ionicons name="checkmark-done-circle" size={24} color={theme.colors.success} style={{ marginLeft: 8 }} />}
           </View>
 
           {renderOfflineBanner()}

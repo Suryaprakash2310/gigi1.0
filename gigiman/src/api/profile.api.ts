@@ -13,6 +13,7 @@ export interface EmployeeProfile {
   phoneMasked?: string;
   address?: any;
   storeLocation?: string;
+  avatar?: string;
 }
 
 export interface GetProfileResponse {

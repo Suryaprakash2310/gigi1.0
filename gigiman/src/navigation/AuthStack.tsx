@@ -9,7 +9,7 @@ import { SingleEmpDetail } from '../screens/RegistrationPage/SingleEmpDetail';
 export type AuthStackParamList = {
   auth: undefined;
   phone: undefined;
-  otp: { phone: string; otp?: string }; // pass phone number and optionally OTP to OTP screen
+  otp: { phone: string; confirmation: any }; // pass phone number and Firebase confirmation object to OTP screen
   EmployeeDetail: { role: string };
   ToolShopDetail: undefined;
   login?: undefined;

@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 
 
 import { ProfileContext } from "@/context/ProfileContext";
@@ -39,6 +41,38 @@ export default function EditProfileScreen({ navigation }: any) {
   );
 
   const fields = EDIT_PROFILE_FIELDS[userRole || ""] || [];
+
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarBase64, setAvatarBase64] = useState<string | null>(null);
+
+  const handleSelectAvatar = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please grant library access to select a profile picture.');
+        return;
+      }
+
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!res.canceled && res.assets?.[0]) {
+        const asset = res.assets[0];
+        setAvatarUri(asset.uri);
+        if (asset.base64) {
+          setAvatarBase64(`data:image/jpeg;base64,${asset.base64}`);
+        }
+      }
+    } catch (err) {
+      console.error('Error picking avatar:', err);
+      Alert.alert('Error', 'Failed to pick image.');
+    }
+  };
 
   const onChange = (key: string, value: string) => {
     setForm((prev: any) => ({ ...prev, [key]: value }));
@@ -104,6 +138,11 @@ export default function EditProfileScreen({ navigation }: any) {
       payload.services = selectedCategories;
     }
 
+    // Handle Avatar
+    if (avatarBase64) {
+      payload.avatar = avatarBase64;
+    }
+
     if (Object.keys(payload).length === 0) {
       Alert.alert("No changes", "Nothing to update");
       return;
@@ -132,6 +171,26 @@ export default function EditProfileScreen({ navigation }: any) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+
+        {/* Avatar Edit Section */}
+        <View style={styles.avatarSection}>
+          <TouchableOpacity onPress={handleSelectAvatar} activeOpacity={0.8} style={styles.avatarWrapper}>
+            <Image
+              source={
+                avatarUri
+                  ? { uri: avatarUri }
+                  : profile?.avatar
+                  ? { uri: profile.avatar }
+                  : require("../../../assets/icon.png")
+              }
+              style={styles.avatarImage}
+            />
+            <View style={styles.editIconWrapper}>
+              <Ionicons name="camera" size={18} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.avatarLabel}>Tap to change profile picture</Text>
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Basic Information</Text>
@@ -321,6 +380,44 @@ const styles = StyleSheet.create({
     elevation: 10,
     position: 'absolute',
     bottom: 0,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    borderRadius: 60,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#e1e4e8',
+  },
+  editIconWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: theme.colors.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  avatarLabel: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 10,
+    fontWeight: '600',
   },
 });
 
