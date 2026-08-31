@@ -59,83 +59,7 @@ export const EmpBookingScreen = () => {
   const route = useRoute<BookingRouteProp>();
   const { bookingId } = route.params ?? {};
 
-  const handleCashPayment = async () => {
-    if (isSubmitting) return;
-    try {
-      setIsSubmitting(true);
-      const res = await paymentSuccessApi({
-        bookingId: bookingId,
-        paymentMethod: "CASH",
-      });
 
-      Alert.alert("Success", "Payment completed");
-      // navigation.replace("Razorpay", {
-      //   bookingId: bookingId,
-      //   amount: job.totalPrice,
-      //   orderId: job.razorpayOrderId, // backend should already have it
-      // });
-
-      //   navigation.navigate("BookingCompleted", {
-      //   bookingId: job._id,
-      // });
-      resetBookingState();
-      console.log("🗑 Active booking removed");
-      navigation.replace("BookingCompleted");
-
-    } catch (err: any) {
-      Alert.alert(
-        "Payment Failed",
-        err?.response?.data?.message || "Something went wrong"
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  const handleRazorpayPayment = async () => {
-    if (isSubmitting) return;
-    try {
-      setIsSubmitting(true);
-      const res = await createOrder(bookingId!, Number(job?.totalPrice ?? job?.cost));
-      console.log("🧾 Order created:", res.data);
-      const orderId = res.data.orderId;
-
-
-
-      // const options = {
-      //   description: "Gigiman Service Payment",
-      //   currency: "INR",
-      //   key: RAZORPAY_KEY_ID,
-      //   amount: job.totalPrice * 100,
-      //   name: "Gigiman",
-      //   prefill: {
-      //     contact: user.phone,
-      //     name: user.fullName,
-      //   },
-      // };
-
-
-      // await paymentSuccessApi({
-      //   bookingId: bookingId,
-      //   paymentMethod: "RAZORPAY",
-      //   // razorpayOrderId: paymentData.razorpay_order_id,
-      //   // razorpayPaymentId: paymentData.razorpay_payment_id,
-      //   // razorpaySignature: paymentData.razorpay_signature,
-      // });
-
-      //Alert.alert("Success", "Payment completed");
-
-      navigation.replace("Razorpay", {
-        bookingId,
-        amount: res.data.amount,
-        orderId: orderId,
-      });
-
-    } catch (err: any) {
-      Alert.alert("Payment cancelled or failed");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
 
 
@@ -179,6 +103,82 @@ export const EmpBookingScreen = () => {
     partsCollected,
     setPartsCollected,
   } = useProviderBooking();
+
+  // Billing calculations
+  const totalCost = Number(job?.totalPrice ?? job?.cost ?? 0);
+  const advancePaid = Number(job?.advancePayment ?? job?.advancePaid ?? job?.advanceAmount ?? 0);
+  const remainingAmount = job?.remainingAmount !== undefined ? Number(job?.remainingAmount) : Math.max(0, totalCost - advancePaid);
+  const isFullPayment = advancePaid > 0 && advancePaid >= totalCost;
+
+  const handleCashPayment = async () => {
+    if (isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const res = await paymentSuccessApi({
+        bookingId: bookingId,
+        paymentMethod: "CASH",
+      });
+
+      Alert.alert("Success", "Payment completed");
+      resetBookingState();
+      console.log("🗑 Active booking removed");
+      navigation.replace("BookingCompleted");
+
+    } catch (err: any) {
+      Alert.alert(
+        "Payment Failed",
+        err?.response?.data?.message || "Something went wrong"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRazorpayPayment = async () => {
+    if (isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const paymentAmount = advancePaid > 0 ? remainingAmount : totalCost;
+      const res = await createOrder(bookingId!, paymentAmount);
+      console.log("🧾 Order created:", res.data);
+      const orderId = res.data.orderId;
+
+      navigation.replace("Razorpay", {
+        bookingId,
+        amount: res.data.amount,
+        orderId: orderId,
+      });
+
+    } catch (err: any) {
+      Alert.alert("Payment cancelled or failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDirectComplete = async () => {
+    if (isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const res = await paymentSuccessApi({
+        bookingId: bookingId!,
+        paymentMethod: "CASH", // complete the order directly since it's fully paid
+      });
+
+      Alert.alert("Success", "Order completed successfully");
+      resetBookingState();
+      console.log("🗑 Active booking removed");
+      navigation.replace("BookingCompleted");
+
+    } catch (err: any) {
+      Alert.alert(
+        "Completion Failed",
+        err?.response?.data?.message || "Something went wrong"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const { profile } = useContext(ProfileContext);
   const isLeader = !job?.teamLeader || (profile && job.teamLeader._id === profile._id);
@@ -774,7 +774,9 @@ export const EmpBookingScreen = () => {
             <UserDetailContainer
               name={job?.userName || job?.name || "Unknown"}
               serviceCategoryName={job?.serviceCategoryName || "-"}
-              cost={`₹ ${job?.cost}` || "-"}
+              cost={`₹ ${totalCost}`}
+              advancePaid={advancePaid > 0 ? `₹ ${advancePaid}` : undefined}
+              remainingAmount={advancePaid > 0 ? `₹ ${remainingAmount}` : undefined}
               address={job?.address || "-"}
               employeeCount={job?.employeeCount || "1"}
               durationInMinutes={job?.durationInMinutes || "Not Provided"}
@@ -920,29 +922,49 @@ export const EmpBookingScreen = () => {
                     <View style={styles.paymentSection}>
                       <Text style={styles.paymentTitle}>Payment & Completion</Text>
 
-                      <TouchableOpacity
-                        style={[styles.paymentButton, styles.cashButton]}
-                        onPress={handleCashPayment}
-                        activeOpacity={0.8}
-                      >
-                        <View style={styles.paymentIconCircle}>
-                          <Ionicons name="cash-outline" size={22} color="#166534" />
-                        </View>
-                        <Text style={[styles.paymentButtonText, { color: '#166534' }]}>Pay & Complete (Cash)</Text>
-                        <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
-                      </TouchableOpacity>
+                      {isFullPayment ? (
+                        <TouchableOpacity
+                          style={[styles.paymentButton, styles.cashButton]}
+                          onPress={handleDirectComplete}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.paymentIconCircle}>
+                            <Ionicons name="checkmark-circle-outline" size={22} color="#166534" />
+                          </View>
+                          <Text style={[styles.paymentButtonText, { color: '#166534' }]}>Complete Order (Fully Paid)</Text>
+                          <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
+                        </TouchableOpacity>
+                      ) : (
+                        <>
+                          <TouchableOpacity
+                            style={[styles.paymentButton, styles.cashButton]}
+                            onPress={handleCashPayment}
+                            activeOpacity={0.8}
+                          >
+                            <View style={styles.paymentIconCircle}>
+                              <Ionicons name="cash-outline" size={22} color="#166534" />
+                            </View>
+                            <Text style={[styles.paymentButtonText, { color: '#166534' }]}>
+                              {advancePaid > 0 ? `Pay Remaining (Cash): ₹${remainingAmount}` : 'Pay & Complete (Cash)'}
+                            </Text>
+                            <Ionicons name="chevron-forward" size={18} color="#166534" style={{ marginLeft: 'auto' }} />
+                          </TouchableOpacity>
 
-                      <TouchableOpacity
-                        style={[styles.paymentButton, styles.onlineButton]}
-                        onPress={handleRazorpayPayment}
-                        activeOpacity={0.8}
-                      >
-                        <View style={styles.paymentIconCircle}>
-                          <Ionicons name="card-outline" size={22} color="#1e40af" />
-                        </View>
-                        <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>Pay Online & Complete</Text>
-                        <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
-                      </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.paymentButton, styles.onlineButton]}
+                            onPress={handleRazorpayPayment}
+                            activeOpacity={0.8}
+                          >
+                            <View style={styles.paymentIconCircle}>
+                              <Ionicons name="card-outline" size={22} color="#1e40af" />
+                            </View>
+                            <Text style={[styles.paymentButtonText, { color: '#1e40af' }]}>
+                              {advancePaid > 0 ? `Pay Remaining Online: ₹${remainingAmount}` : 'Pay Online & Complete'}
+                            </Text>
+                            <Ionicons name="chevron-forward" size={18} color="#1e40af" style={{ marginLeft: 'auto' }} />
+                          </TouchableOpacity>
+                        </>
+                      )}
                     </View>
                   </>
                 ) : (

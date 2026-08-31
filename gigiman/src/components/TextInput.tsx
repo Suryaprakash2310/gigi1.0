@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
   KeyboardTypeOptions,
+  TouchableWithoutFeedback,
 } from 'react-native';
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
   keyboardType?: KeyboardTypeOptions;
   secureTextEntry?: boolean;
   maxLength?: number;
+  multiline?: boolean;
 }
 
 const FloatingLabelInput: React.FC<Props> = ({
@@ -29,9 +31,11 @@ const FloatingLabelInput: React.FC<Props> = ({
   keyboardType = 'default',
   secureTextEntry = false,
   maxLength,
+  multiline = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     Animated.timing(animatedIsFocused, {
@@ -62,36 +66,38 @@ const FloatingLabelInput: React.FC<Props> = ({
 
   return (
     <View style={styles.container}>
-      <View
-        style={[
-          styles.inputContainer,
-          {
-            borderColor: error
-              ? '#FF4D4F'
-              : isFocused
-              ? 'black'
-              : '#4a4949ff',
-          },
-        ]}
-      >
-        <Animated.Text style={labelStyle}>{label}</Animated.Text>
+      <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
+        <View
+          style={[
+            styles.inputContainer,
+            {
+              borderColor: error
+                ? '#FF4D4F'
+                : isFocused
+                ? 'black'
+                : '#4a4949ff',
+            },
+          ]}
+        >
+          <Animated.Text pointerEvents="none" style={labelStyle}>{label}</Animated.Text>
 
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          style={styles.input}
-          keyboardType={keyboardType}
-          secureTextEntry={secureTextEntry}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          multiline
-          blurOnSubmit
-          placeholder={isFocused ? placeholder : ''}
-          placeholderTextColor="#999"
-          maxLength={maxLength}
-          
-        />
-      </View>
+          <TextInput
+            ref={inputRef}
+            value={value}
+            onChangeText={onChangeText}
+            style={styles.input}
+            keyboardType={keyboardType}
+            secureTextEntry={secureTextEntry}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            multiline={multiline}
+            blurOnSubmit
+            placeholder={isFocused ? placeholder : ''}
+            placeholderTextColor="#999"
+            maxLength={maxLength}
+          />
+        </View>
+      </TouchableWithoutFeedback>
 
       {error ? <Text style={styles.errorText}>{error} </Text> : null}
     </View>
@@ -123,7 +129,7 @@ const styles = StyleSheet.create({
   //borderColor: '#ccc',
   //borderRadius: 8,
   fontSize: 16,
-
+  width: '100%',
   },
   errorText: {
     color: '#FF4D4F',

@@ -38,6 +38,14 @@ export default function PhoneNumberScreen() {
       await AuthAPI.sendOtp(phone);
 
       // 2. Trigger Firebase SMS OTP
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          'Web Platform Not Supported',
+          'Firebase Authentication is only supported on native platforms (Android/iOS). Please run the app on an Android or iOS emulator/device to verify.'
+        );
+        return;
+      }
+
       console.log('Sending Firebase OTP to +91' + phone);
       const confirmation = await auth().signInWithPhoneNumber(`+91${phone}`);
       navigation.navigate('otp', { phone, confirmation });

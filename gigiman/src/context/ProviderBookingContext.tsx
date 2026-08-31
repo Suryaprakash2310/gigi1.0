@@ -8,6 +8,7 @@ export interface IncomingBooking {
   id: string;
   name: string;
   work: string;
+  serviceCategoryName?: string;
   cost?: number;
   address: string;
   employeeCount?: number;

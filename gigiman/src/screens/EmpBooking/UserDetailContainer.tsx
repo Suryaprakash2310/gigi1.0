@@ -6,6 +6,8 @@ interface UserDetailContainerProps {
   name: string;
   serviceCategoryName: string;
   cost: string;
+  advancePaid?: string;
+  remainingAmount?: string;
   durationInMinutes?: string;
   employeeCount: string;
   address: string;
@@ -15,6 +17,8 @@ export const UserDetailContainer = ({
   name,
   serviceCategoryName,
   cost,
+  advancePaid,
+  remainingAmount,
   durationInMinutes,
   employeeCount,
   address,
@@ -22,7 +26,9 @@ export const UserDetailContainer = ({
   const details = [
     { label: 'Name', value: name },
     { label: 'Work', value: serviceCategoryName },
-    { label: 'Cost', value: cost },
+    { label: 'Total Cost', value: cost },
+    ...(advancePaid ? [{ label: 'Advance Paid', value: advancePaid }] : []),
+    ...(remainingAmount ? [{ label: 'Remaining Amount', value: remainingAmount }] : []),
     ...(durationInMinutes ? [{ label: 'Working Hours', value: durationInMinutes }] : []),
     { label: 'Employee Count', value: employeeCount },
     { label: 'Address', value: address },
