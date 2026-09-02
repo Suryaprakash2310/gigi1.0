@@ -1,16 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useContext } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useSocket } from '../socket/SocketProvider';
 import { useNotificationStore } from '../store/notification.store';
-import { Ionicons } from '@expo/vector-icons';
-// Optional: import { useToast } from 'some-toast-lib'; if available.
+import { AuthContext } from '../context/AuthContext';
 
 export const NotificationListener: React.FC = () => {
   const socket = useSocket();
+  const { userToken } = useContext(AuthContext);
   const { fetchNotifications, handleNewRealtimeNotification } = useNotificationStore();
 
   // App State change listener (Foreground/Background)
   useEffect(() => {
+    if (!userToken) return;
+
+    // Initial fetch when authenticated
+    fetchNotifications();
+
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active') {
         // App has come to foreground, refetch notifications
@@ -23,11 +28,11 @@ export const NotificationListener: React.FC = () => {
     return () => {
       subscription.remove();
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, userToken]);
 
   // Socket new notification listener
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !userToken) return;
 
     const onNewNotification = (data: any) => {
       console.log('🔔 New real-time notification received:', data);
@@ -43,7 +48,7 @@ export const NotificationListener: React.FC = () => {
     return () => {
       socket.off('new_notification', onNewNotification);
     };
-  }, [socket, handleNewRealtimeNotification]);
+  }, [socket, userToken, handleNewRealtimeNotification]);
 
   return null; // This is a background listener component, renders nothing
 };

@@ -37,32 +37,30 @@ const FloatingLabelInput: React.FC<Props> = ({
   const animatedIsFocused = useRef(new Animated.Value(value ? 1 : 0)).current;
   const inputRef = useRef<TextInput>(null);
 
+  const isFloating = isFocused || Boolean(value);
+
   useEffect(() => {
     Animated.timing(animatedIsFocused, {
-      toValue: isFocused || value ? 1 : 0,
+      toValue: isFloating ? 1 : 0,
       duration: 180,
       useNativeDriver: false,
     }).start();
-  }, [isFocused, value]);
+  }, [isFloating]);
 
-  const labelStyle = {
-    position: 'absolute' as const,
-    left: 16,
-    top: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [18, -8],
-    }),
-    fontSize: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 12],
-    }),
-    color: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['#999', '#090909ff'],
-    }),
-    backgroundColor: '#fff',
-    paddingHorizontal: 4,
-  };
+  const labelTop = animatedIsFocused.interpolate({
+    inputRange: [0, 1],
+    outputRange: [multiline ? 16 : 17, 7],
+  });
+
+  const labelFontSize = animatedIsFocused.interpolate({
+    inputRange: [0, 1],
+    outputRange: [15, 11],
+  });
+
+  const labelColor = animatedIsFocused.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#9CA3AF', error ? '#FF4D4F' : isFocused ? '#111827' : '#6B7280'],
+  });
 
   return (
     <View style={styles.container}>
@@ -70,36 +68,53 @@ const FloatingLabelInput: React.FC<Props> = ({
         <View
           style={[
             styles.inputContainer,
+            multiline && styles.multilineContainer,
             {
               borderColor: error
                 ? '#FF4D4F'
                 : isFocused
-                ? 'black'
-                : '#4a4949ff',
+                ? '#111827'
+                : '#D1D5DB',
             },
           ]}
         >
-          <Animated.Text pointerEvents="none" style={labelStyle}>{label}</Animated.Text>
+          <Animated.Text
+            pointerEvents="none"
+            style={[
+              styles.label,
+              {
+                top: labelTop,
+                fontSize: labelFontSize,
+                color: labelColor,
+              },
+            ]}
+          >
+            {label}
+          </Animated.Text>
 
           <TextInput
             ref={inputRef}
             value={value}
             onChangeText={onChangeText}
-            style={styles.input}
+            style={[
+              styles.input,
+              isFloating && !multiline && styles.inputWithFloatingLabel,
+              multiline && styles.multilineInput,
+            ]}
             keyboardType={keyboardType}
             secureTextEntry={secureTextEntry}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             multiline={multiline}
-            blurOnSubmit
-            placeholder={isFocused ? placeholder : ''}
-            placeholderTextColor="#999"
+            blurOnSubmit={!multiline}
+            placeholder={isFocused && !value ? placeholder : ''}
+            placeholderTextColor="#9CA3AF"
             maxLength={maxLength}
           />
         </View>
       </TouchableWithoutFeedback>
 
-      {error ? <Text style={styles.errorText}>{error} </Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 };
@@ -109,27 +124,42 @@ export default FloatingLabelInput;
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    //marginBottom: 20,
   },
   inputContainer: {
     borderWidth: 1.2,
     borderRadius: 12,
     backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 18 : 14,
-    paddingBottom: Platform.OS === 'ios' ? 10 : 6,
-    paddingHorizontal: 16,
     height: 56,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  multilineContainer: {
+    height: 'auto',
+    minHeight: 90,
+    paddingTop: 24,
+    paddingBottom: 10,
+    justifyContent: 'flex-start',
+  },
+  label: {
+    position: 'absolute',
+    left: 16,
+    fontWeight: '500',
   },
   input: {
-   //height: 100, // or any fixed height you need
-  //textAlign: 'center',         // horizontal centering
-  textAlignVertical: 'center', // vertical centering (Android only)
-  //padding: 10,
-  //borderWidth: 1,
-  //borderColor: '#ccc',
-  //borderRadius: 8,
-  fontSize: 16,
-  width: '100%',
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    width: '100%',
+  },
+  inputWithFloatingLabel: {
+    marginTop: 14,
+  },
+  multilineInput: {
+    textAlignVertical: 'top',
+    minHeight: 56,
   },
   errorText: {
     color: '#FF4D4F',

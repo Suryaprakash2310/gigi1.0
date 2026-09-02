@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import {
   getServicerNotifications,
@@ -25,6 +26,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   fetchNotifications: async (page = 1, limit = 20) => {
     try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        set({ loading: false });
+        return;
+      }
+
       set({ loading: true, error: null });
       const data = await getServicerNotifications(page, limit);
       
@@ -54,6 +61,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: async () => {
     try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+
       // Optimistically update UI
       set((state) => ({
         unreadCount: 0,

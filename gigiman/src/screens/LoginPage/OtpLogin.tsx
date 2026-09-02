@@ -12,18 +12,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { AuthAPI } from '../../api/auth';
 import { AuthContext } from '../../context/AuthContext';
 import { UserRole } from '@/utils/enums/CommonEnum';
-import auth from '@react-native-firebase/auth';
+import { getAuth, signInWithPhoneNumber, onAuthStateChanged } from '@react-native-firebase/auth';
+import { getConfirmationResult, setConfirmationResult } from '../../utils/authSession';
 
 const { width } = Dimensions.get('window');
 
 export default function OtpLoginScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { phone, confirmation: initialConfirmation } = route.params || {};
-  const [confirmation, setConfirmation] = useState(initialConfirmation);
+  const { phone } = route.params || {};
+  const [confirmation, setConfirmation] = useState<any>(() => getConfirmationResult() || route.params?.confirmation);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const otpRef = useRef<OtpInputRef>(null);
+  const isConfirming = useRef(false);
   const { login } = useContext(AuthContext); // ✅ Use context login
 
   useEffect(() => {
@@ -31,6 +33,36 @@ export default function OtpLoginScreen() {
       otpRef.current?.reset();
     };
   }, []);
+
+  // ⚡ Auto-verification listener (automatically triggers when Google Play Services auto-retrieves SMS)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(getAuth(), async (user) => {
+      if (user && (user.phoneNumber === `+91${phone}` || user.phoneNumber?.replace(/\s+/g, '') === `+91${phone}`)) {
+        if (isConfirming.current) return;
+        isConfirming.current = true;
+        try {
+          setLoading(true);
+          console.log('⚡ Auto-verified by Google Play Services. Getting Firebase token...');
+          const firebaseToken = await user.getIdToken();
+          if (!firebaseToken) throw new Error('Failed to get Firebase token.');
+
+          console.log('Firebase verified. Verifying with backend...');
+          const res = await AuthAPI.verifyOtp(phone, firebaseToken);
+          if (!res?.token || !res?.role) throw new Error('Invalid login response from backend');
+
+          await login(res.role, res.token, res.id);
+          Alert.alert('Login Successful ✅', `Welcome ${res.role}`);
+        } catch (err: any) {
+          console.error('Auto-verification error:', err);
+        } finally {
+          setLoading(false);
+          isConfirming.current = false;
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [phone, login]);
 
   const handleOtpComplete = (enteredOtp: string) => setOtp(enteredOtp);
 
@@ -40,15 +72,27 @@ export default function OtpLoginScreen() {
       return;
     }
 
+    if (isConfirming.current) return;
+    isConfirming.current = true;
+
     try {
       setLoading(true);
 
-      if (!confirmation) {
-        throw new Error("Missing Firebase confirmation object");
+      const activeConfirmation = confirmation || getConfirmationResult();
+      if (!activeConfirmation) {
+        throw new Error("Verification session has expired. Please tap 'Resend' to get a new code.");
       }
 
       console.log('Verifying Firebase OTP...');
-      const userCredential = await confirmation.confirm(otp);
+      let userCredential;
+      const currentUser = getAuth().currentUser;
+
+      if (currentUser && (currentUser.phoneNumber === `+91${phone}` || currentUser.phoneNumber?.replace(/\s+/g, '') === `+91${phone}`)) {
+        userCredential = { user: currentUser };
+      } else {
+        userCredential = await activeConfirmation.confirm(otp);
+      }
+
       const firebaseToken = await userCredential.user.getIdToken();
 
       if (!firebaseToken) {
@@ -83,6 +127,7 @@ export default function OtpLoginScreen() {
       otpRef.current?.reset();
     } finally {
       setLoading(false);
+      isConfirming.current = false;
     }
   };
 
@@ -90,7 +135,9 @@ export default function OtpLoginScreen() {
     try {
       setLoading(true);
       console.log('Resending Firebase OTP...');
-      const newConfirmation = await auth().signInWithPhoneNumber(`+91${phone}`);
+      const authInstance = getAuth();
+      const newConfirmation = await signInWithPhoneNumber(authInstance, `+91${phone}`);
+      setConfirmationResult(newConfirmation);
       setConfirmation(newConfirmation);
       otpRef.current?.reset();
       Alert.alert('Success', 'OTP resent successfully');
@@ -100,6 +147,11 @@ export default function OtpLoginScreen() {
         Alert.alert('Error', 'Too many requests. Please try again later.');
       } else if (error.code === 'auth/invalid-phone-number') {
         Alert.alert('Error', 'Invalid phone number.');
+      } else if (error.code === 'auth/missing-client-identifier') {
+        Alert.alert(
+          'App Verification Failed',
+          'Firebase Play Integrity check failed. Please ensure the app SHA-1/SHA-256 fingerprints are added in Firebase Console.'
+        );
       } else {
         Alert.alert('Error', error?.message || 'Failed to resend OTP');
       }

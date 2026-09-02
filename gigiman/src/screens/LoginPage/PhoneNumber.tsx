@@ -9,7 +9,8 @@ import { useNavigation } from '@react-navigation/native';
 import AppHeader from '../../components/AppHeader';
 import FloatingLabelInput from '../../components/TextInput';
 import { AuthAPI } from '../../api/auth';
-import auth from '@react-native-firebase/auth';
+import { getAuth, signInWithPhoneNumber } from '@react-native-firebase/auth';
+import { setConfirmationResult } from '../../utils/authSession';
 
 const { width, height } = Dimensions.get('window');
 type PhoneNavProp = NativeStackNavigationProp<AuthStackParamList, 'phone'>;
@@ -47,14 +48,21 @@ export default function PhoneNumberScreen() {
       }
 
       console.log('Sending Firebase OTP to +91' + phone);
-      const confirmation = await auth().signInWithPhoneNumber(`+91${phone}`);
-      navigation.navigate('otp', { phone, confirmation });
+      const authInstance = getAuth();
+      const confirmation = await signInWithPhoneNumber(authInstance, `+91${phone}`);
+      setConfirmationResult(confirmation);
+      navigation.navigate('otp', { phone });
     } catch (e: any) {
       console.error('Failed to authenticate:', e);
       if (e.code === 'auth/too-many-requests') {
         Alert.alert('Verification Failed', 'Too many requests. Please try again later.');
       } else if (e.code === 'auth/invalid-phone-number') {
         Alert.alert('Verification Failed', 'Invalid phone number.');
+      } else if (e.code === 'auth/missing-client-identifier') {
+        Alert.alert(
+          'App Verification Failed',
+          'Firebase Play Integrity check failed. Please ensure the app SHA-1/SHA-256 fingerprints are added in Firebase Console.'
+        );
       } else {
         const errorMsg = e.response?.data?.message || e.message || 'Verification service error';
         Alert.alert('Verification Failed', errorMsg);
@@ -104,7 +112,6 @@ export default function PhoneNumberScreen() {
                     }
                   }}
                   keyboardType="numeric"
-                  placeholder="Enter your phone number"
                   error={error}
                   maxLength={10}
                 />
@@ -162,16 +169,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   countryCodeBox: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderWidth: 1.2,
+    borderColor: '#D1D5DB',
     borderRadius: 12,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
     paddingHorizontal: 16,
     height: 56,
     marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'column'
+    backgroundColor: '#fff',
   },
   countryCode: {
     fontSize: 16,
@@ -180,12 +186,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonWrapper: {
-    //flex:1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    // position: 'absolute',
-    // bottom: height * 0.08,
-    // left: 24,
-    // right: 24,
+    marginBottom: Platform.OS === 'ios' ? 24 : 36,
   },
 });

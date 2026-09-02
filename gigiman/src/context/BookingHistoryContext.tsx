@@ -1,5 +1,6 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useEffect, useState, useContext } from "react";
 import { BookingAPI, BookingHistoryResponse, Booking } from "@/api/profile.api";
+import { AuthContext } from "./AuthContext";
 
 type HistoryData = BookingHistoryResponse;
 
@@ -28,6 +29,7 @@ export const BookingHistoryProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
+  const { userToken } = useContext(AuthContext);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stats, setStats] = useState<HistoryData["stats"] | null>(null);
   const [charts, setCharts] = useState<HistoryData["charts"] | null>(null);
@@ -36,6 +38,15 @@ export const BookingHistoryProvider = ({
   const [loading, setLoading] = useState(false);
 
   const loadBookings = async () => {
+    if (!userToken) {
+      setBookings([]);
+      setStats(null);
+      setCharts(null);
+      setHighestEarning(null);
+      setTotalBookings(0);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const data = await BookingAPI.getRecentBookings();
@@ -55,8 +66,16 @@ export const BookingHistoryProvider = ({
   };
 
   useEffect(() => {
-    loadBookings();
-  }, []);
+    if (userToken) {
+      loadBookings();
+    } else {
+      setBookings([]);
+      setStats(null);
+      setCharts(null);
+      setHighestEarning(null);
+      setTotalBookings(0);
+    }
+  }, [userToken]);
 
   return (
     <BookingHistoryContext.Provider

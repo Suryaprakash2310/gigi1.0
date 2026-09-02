@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect, createContext, ReactNode } from 'react';
 import { socket } from "@/socket/socket";
 import { UserRole } from '@/utils/enums/CommonEnum';
+import { getAuth, signOut } from '@react-native-firebase/auth';
 
 // 👇 Define what data and functions are available in this context
 interface AuthContextType {
@@ -151,6 +152,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Logout → Clear all session data so shared devices don't leak state
   const logout = async () => {
     try {
+      await signOut(getAuth()).catch((e) => console.error('Firebase signout error:', e));
+
       await AsyncStorage.multiRemove([
         'userToken',
         'userRole',
