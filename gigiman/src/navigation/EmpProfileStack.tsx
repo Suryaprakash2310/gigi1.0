@@ -15,6 +15,9 @@ import TicketDetailScreen from '@/screens/profile/TicketDetailScreen';
 import ProfileDetailsScreen from '@/screens/profile/ProfileDetailsScreen';
 import ServiceCategoryScreen from '@/screens/profile/ServiceCategoryScreen';
 import ToolsScreen from '@/screens/profile/ToolsScreen';
+import AboutGigimanScreen from '@/screens/profile/AboutGigimanScreen';
+import TermsAndConditionsScreen from '@/screens/profile/TermsAndConditionsScreen';
+import PrivacyPolicyScreen from '@/screens/profile/PrivacyPolicyScreen';
 
 export type EmpProfileStackParamList = {
   Profile: undefined;
@@ -31,6 +34,9 @@ export type EmpProfileStackParamList = {
   ProfileDetails: undefined;
   ServiceCategory: undefined;
   Tools: undefined;
+  AboutGigiman: undefined;
+  TermsAndConditions: undefined;
+  PrivacyPolicy: undefined;
 };
 
 const Stack = createNativeStackNavigator<EmpProfileStackParamList>();
@@ -52,6 +58,9 @@ export default function EmpProfileStack() {
       <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
       <Stack.Screen name="ServiceCategory" component={ServiceCategoryScreen} />
       <Stack.Screen name="Tools" component={ToolsScreen} />
+      <Stack.Screen name="AboutGigiman" component={AboutGigimanScreen} />
+      <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 }

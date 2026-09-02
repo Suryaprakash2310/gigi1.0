@@ -10,6 +10,9 @@ import SupportTicketsScreen from '@/screens/profile/SupportTicketsScreen';
 import TicketDetailScreen from '@/screens/profile/TicketDetailScreen';
 import ProfileDetailsScreen from '@/screens/profile/ProfileDetailsScreen';
 import ToolsScreen from '@/screens/profile/ToolsScreen';
+import AboutGigimanScreen from '@/screens/profile/AboutGigimanScreen';
+import TermsAndConditionsScreen from '@/screens/profile/TermsAndConditionsScreen';
+import PrivacyPolicyScreen from '@/screens/profile/PrivacyPolicyScreen';
 
 export type ToolShopProfileStackParamList = {
     Profile: undefined;
@@ -21,6 +24,9 @@ export type ToolShopProfileStackParamList = {
     TicketDetail: { ticketId: string };
     ProfileDetails: undefined;
     Tools: undefined;
+    AboutGigiman: undefined;
+    TermsAndConditions: undefined;
+    PrivacyPolicy: undefined;
 };
 
 const Stack = createNativeStackNavigator<ToolShopProfileStackParamList>();
