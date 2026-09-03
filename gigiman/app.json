@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "gigiman",
-    "slug": "gigiman",
+    "slug": "gigiman-partner",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -34,7 +34,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "a1bc9b3c-c141-4131-9976-aad5f93765c2"
+        "projectId": "037837e5-1ba0-42b6-bd23-db0fdc006484"
       },
       "extra": {
         "RZ_KEY_ID": "rzp_test_Rozlevr5lLPDR9"
@@ -45,6 +45,6 @@
       "@react-native-firebase/app",
       "@react-native-firebase/auth"
     ],
-    "owner": "suryaprakash23"
+    "owner": "gigiman-services"
   }
 }
