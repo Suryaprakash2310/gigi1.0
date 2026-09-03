@@ -71,7 +71,7 @@ export default function ToolShopTabNavigator() {
       {/* <Tab.Screen name="Dashboard" component={TeamMembersScreen} /> */}
       <Tab.Screen name="Dashboard" component={ToolShopDashboard} />
       {/* <Tab.Screen name="Booking" component={ToolShopBooking} /> */}
-      <Tab.Screen name="Pocket" component={PocketStack} />
+      {/* <Tab.Screen name="Pocket" component={PocketStack} /> */}
       <Tab.Screen name="profileTab" component={EmpProfileStack} />
     </Tab.Navigator>
   );
