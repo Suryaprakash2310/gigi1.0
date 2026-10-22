@@ -18,6 +18,7 @@ import { EmpProfileStackParamList } from '@/navigation/EmpProfileStack';
 import { AuthContext } from '@/context/AuthContext';
 import { ProfileContext } from '@/context/ProfileContext';
 import { TicketAPI } from '@/api/ticket.api';
+import { formatBookingId } from '@/utils/booking.utils';
 
 type RaiseIssueRouteProp = RouteProp<EmpProfileStackParamList, 'RaiseIssue'>;
 
@@ -25,7 +26,9 @@ export default function RaiseIssueScreen() {
   const navigation = useNavigation();
   const route = useRoute<RaiseIssueRouteProp>();
   const initialCategory = route.params?.category || '';
-  const bookingId = route.params?.bookingId || '';
+  const rawBookingId = route.params?.bookingId || '';
+  const bookingNumberParam = (route.params as any)?.bookingNumber;
+  const displayBookingId = bookingNumberParam || (rawBookingId ? formatBookingId(rawBookingId) : '');
   
   const { profile } = useContext(ProfileContext);
 
@@ -67,11 +70,16 @@ export default function RaiseIssueScreen() {
     setLoading(true);
 
     try {
+      const issueMessage = description 
+        ? (displayBookingId ? `${description}\n[Booking ID: ${displayBookingId}]` : description)
+        : (displayBookingId ? `Issue: ${category} [Booking ID: ${displayBookingId}]` : `Issue: ${category}`);
+
       const payload: any = {
-        message: description || `Issue: ${category}`,
+        message: issueMessage,
         category: categoryMapper[category] || 'Complaint',
         supportType: supportMode,
-        bookingId: bookingId || "",
+        bookingId: rawBookingId || "",
+        bookingNumber: displayBookingId || undefined,
         priority: getPriority(category).charAt(0) + getPriority(category).slice(1).toLowerCase(), // Convert to Title Case to match model if needed
       };
 
@@ -108,10 +116,10 @@ export default function RaiseIssueScreen() {
         </View>
 
         <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {bookingId ? (
+          {displayBookingId ? (
             <View style={styles.contextCard}>
               <Ionicons name="information-circle" size={20} color={theme.colors.primary} />
-              <Text style={styles.contextText}>Reporting issue for Booking ID: #{bookingId}</Text>
+              <Text style={styles.contextText}>Reporting issue for Booking ID: {displayBookingId}</Text>
             </View>
           ) : null}
 

@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme/theme";
 
 interface RequestCardProps {
@@ -11,7 +12,6 @@ interface RequestCardProps {
   mode: "incoming" | "pickup";
 }
 
-
 export const RequestCard = ({
   request,
   onAccept,
@@ -22,36 +22,67 @@ export const RequestCard = ({
 }: RequestCardProps) => {
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Parts Request</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.titleBadge}>
+          <Ionicons name="cube-outline" size={14} color="#0D9488" />
+          <Text style={styles.title}>Parts Request</Text>
+        </View>
+        <Text style={styles.total}>₹{request.totalCost}</Text>
+      </View>
 
-      {request.parts.map((p: any, i: number) => (
-        <Text key={i}>
-          {p.partName} × {p.quantity}
-        </Text>
-      ))}
-
-      <Text style={styles.total}>₹{request.totalCost}</Text>
+      <View style={styles.partsList}>
+        {request.parts?.map((p: any, i: number) => (
+          <View key={i} style={styles.partItem}>
+            <Text style={styles.partName} numberOfLines={1}>
+              {p.partName}
+            </Text>
+            <View style={styles.qtyBadge}>
+              <Text style={styles.qtyText}>× {p.quantity}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
 
       {/* 🔽 ACTIONS */}
       {mode === "incoming" && (
         <View style={styles.actions}>
-          <TouchableOpacity onPress={onReject} style={styles.reject}>
-            <Text>Reject</Text>
+          <TouchableOpacity
+            onPress={onReject}
+            style={styles.reject}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle-outline" size={18} color="#DC2626" />
+            <Text style={styles.rejectText}>Reject</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onAccept} style={styles.accept}>
-            <Text>Accept</Text>
+          <TouchableOpacity
+            onPress={onAccept}
+            style={styles.accept}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+            <Text style={styles.acceptText}>Accept</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {mode === "pickup" && (
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-          <TouchableOpacity onPress={onVerify} style={[styles.verify, { flex: 1 }]}>
-            <Text style={{ color: "#fff", textAlign: 'center' }}>Verify OTP</Text>
+        <View style={styles.pickupActions}>
+          <TouchableOpacity
+            onPress={onVerify}
+            style={styles.verify}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="shield-checkmark-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.actionBtnText}>Verify OTP</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onDownloadBill} style={[styles.download, { flex: 1 }]}>
-            <Text style={{ color: "#fff", textAlign: 'center' }}>Download Bill</Text>
+          <TouchableOpacity
+            onPress={onDownloadBill}
+            style={styles.download}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="download-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.actionBtnText}>Download Bill</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -59,41 +90,165 @@ export const RequestCard = ({
   );
 };
 
-
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#0F172A",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  title: { fontWeight: "700", marginBottom: 8 },
-  actions: { flexDirection: "row", marginTop: 12 },
-  accept: {
-    flex: 1,
-    backgroundColor: "green",
-    padding: 10,
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  titleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0FDFA",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
-    marginRight: 6,
+    gap: 6,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F766E",
+    letterSpacing: 0.2,
+  },
+  total: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  partsList: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  partItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  partName: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#334155",
+    flex: 1,
+  },
+  qtyBadge: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  qtyText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 14,
+  },
+  accept: {
+    flex: 1.25,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#16A34A",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#16A34A",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.28,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  acceptText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
   reject: {
     flex: 1,
-    backgroundColor: "red",
-    padding: 10,
-    borderRadius: 8,
-    marginLeft: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1.5,
+    borderColor: "#FECACA",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 6,
   },
-  btnText: { color: "#fff", textAlign: "center" },
-  total: { fontWeight: "700", marginTop: 8 },
+  rejectText: {
+    color: "#DC2626",
+    fontWeight: "700",
+    fontSize: 15,
+    letterSpacing: 0.2,
+  },
+  pickupActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+  },
   verify: {
-    marginTop: 12,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: theme.colors.primary,
-    padding: 10,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
   },
   download: {
-    backgroundColor: "#2196F3", // Blue for download
-    padding: 10,
-    borderRadius: 8,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2563EB",
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+  },
+  actionBtnText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

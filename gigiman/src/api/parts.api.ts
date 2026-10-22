@@ -58,12 +58,15 @@ export const fetchParts = async (jobId: string, categoryId: string): Promise<Par
 
 export const fetchPartRequestById = async (
   requestId: string
-): Promise<PartRequest> => {
-  const res = await apiClient.get<{ partRequest: PartRequest }>(
-    `booking/parts/part-request/${requestId}`
-  );
-
-  return res.data.partRequest;
+): Promise<PartRequest | null> => {
+  try {
+    const res = await apiClient.get<{ partRequest?: PartRequest; success?: boolean }>(
+      `booking/parts/part-request/${requestId}`
+    );
+    return res.data?.partRequest || null;
+  } catch {
+    return null;
+  }
 };
 
 export const downloadPartBill = async (requestId: string) => {
@@ -88,7 +91,6 @@ export const createPartRequest = async (
     parts,
     totalCost,
   });
-  console.log("++++++++++++Part request response:", res.data);
   return res.data;
 };
 

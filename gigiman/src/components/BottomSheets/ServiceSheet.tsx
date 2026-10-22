@@ -17,7 +17,7 @@ export const ServiceSheet = () => {
             key={service.id}
             title={service.title}
             icon={service.icon}
-            onPress={() => console.log('Selected:', service.title)}
+            onPress={() => {}}
           />
         ))}
       </ScrollView>

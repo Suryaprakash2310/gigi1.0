@@ -79,6 +79,7 @@ export default function EmployeeProfileScreen({ navigation }: any) {
   };
 
   const menu: MenuItem[] = [
+    { key: 'shift', icon: 'time-outline', title: 'Shift & Working Slots', subtitle: '10 AM - 5 PM schedule', onPress: () => navigation.navigate('ShiftManagement') },
     { key: 'jobs', icon: 'briefcase-outline', title: 'Team Management', subtitle: 'Current team', onPress: () => userRole === UserRole.MULTI_EMPLOYEE ? navigation.navigate('team') : navigation.navigate('TeamRequest') },
     { key: 'Bookings', icon: 'time-outline', title: "Booking History", subtitle: 'Recent', onPress: () => navigation.navigate("RecentBookingHistory") },
     { key: 'earnings', icon: 'wallet-outline', title: 'Earnings', subtitle: 'Week / Month', onPress: () => navigation.navigate('Earnings') },

@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { theme } from "../theme/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -108,7 +109,7 @@ export default function BottomButton({
         style={{ width: "100%", maxWidth: 500 }}
       >
         <LinearGradient
-          colors={disabled ? ["#999", "#777"] : ["#8e2e0cff", "#8e2e0cff"]}
+          colors={disabled ? ["#999", "#777"] : [theme.colors.button || theme.colors.primary, theme.colors.button || theme.colors.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[

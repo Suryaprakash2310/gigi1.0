@@ -75,12 +75,6 @@ export const TeamAssignModal = ({
   }
 
   try {
-    console.log("🚀 TEAM ACCEPT API", {
-      bookingId: booking.id,
-      teamId: booking.teamId,
-      leaderEmpId: primary,
-      helperEmpIds: helpers,
-    });
 
     // await apiClient.post("/booking/team/assign", {
     //   bookingId: booking.id,
@@ -89,9 +83,12 @@ export const TeamAssignModal = ({
     //   helperEmpIds: helpers,        // 🔥 empId[]
     // });
 
+    const targetBookingId = booking?.id || booking?._id || booking?.bookingId;
+    const resolvedTeamId = booking?.teamId || employeeId;
+
     socket.emit("team-accept", {
-      bookingId: booking.id,
-      teamId: booking.teamId,
+      bookingId: targetBookingId,
+      teamId: resolvedTeamId,
       leaderEmpId: primary,        // 🔥 empId
       helperEmpIds: helpers,
     });

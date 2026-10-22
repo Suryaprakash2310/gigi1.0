@@ -7,6 +7,7 @@ import { socket } from "../socket/socket";
 import * as Location from "expo-location";
 import { theme } from "../theme/theme";
 import { useLiveTracking } from "../hooks/useLiveTracking";
+import { parseCoordinates, getDirectionsUrl } from "@/utils/location";
 
 export const UserLiveTrackingScreen = () => {
     const navigation = useNavigation();
@@ -31,25 +32,26 @@ export const UserLiveTrackingScreen = () => {
 
         // Ensure socket is connected
         if (!socket.connected) {
-            console.log("🔌 Socket not connected, connecting...");
             socket.connect();
         }
 
         // 1. Join Tracking Room
-        console.log(`🔌 Joining tracking room: ${bookingId}`);
         socket.emit("join-tracking", { bookingId });
 
         // 2. Listen for Location Updates
         const handleLocationUpdate = (data: any) => {
-            console.log("📍 User received servicer location:", data);
+            const isMatch = !data.bookingId || String(data.bookingId) === String(bookingId);
 
-            if (data.bookingId === bookingId || data.latitude) {
-                setServicerLocation({
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                    heading: data.heading,
-                    eta: data.eta,
-                });
+            if (isMatch) {
+                const coords = parseCoordinates(data);
+                if (coords) {
+                    setServicerLocation({
+                        latitude: coords.latitude,
+                        longitude: coords.longitude,
+                        heading: data.heading || 0,
+                        eta: data.eta,
+                    });
+                }
             }
         };
 
@@ -162,13 +164,16 @@ export const UserLiveTrackingScreen = () => {
 
     const openExternalMap = () => {
         if (!servicerLocation) return;
-        const latLng = `${servicerLocation.latitude},${servicerLocation.longitude}`;
-        const label = "Technician Location";
-        const url = Platform.select({
-            ios: `maps:0,0?q=${label}@${latLng}`,
-            android: `geo:0,0?q=${latLng}(${label})`,
-        });
-        if (url) Linking.openURL(url);
+        const url = getDirectionsUrl(
+            { latitude: servicerLocation.latitude, longitude: servicerLocation.longitude },
+            userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : null
+        );
+        if (url) {
+            Linking.openURL(url).catch(() => {
+                const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${servicerLocation.latitude},${servicerLocation.longitude}`;
+                Linking.openURL(fallbackUrl);
+            });
+        }
     };
 
     const hasMapData = userLocation || servicerLocation;
@@ -237,7 +242,7 @@ export const UserLiveTrackingScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#fff" },
+    container: { flex: 1, backgroundColor: theme.colors.background },
     header: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -296,7 +301,7 @@ const styles = StyleSheet.create({
     actions: { flexDirection: "row", gap: 16 },
     actionBtn: {
         flex: 1,
-        backgroundColor: "#000",
+        backgroundColor: theme.colors.primary,
         borderRadius: 12,
         padding: 16,
         flexDirection: "row",

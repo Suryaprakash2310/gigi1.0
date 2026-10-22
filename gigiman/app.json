@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#02492b"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -24,7 +24,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icons/logo.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#02492b"
       },
       "package": "com.suryaprakash23.gigiman",
       "googleServicesFile": "./google-services.json"

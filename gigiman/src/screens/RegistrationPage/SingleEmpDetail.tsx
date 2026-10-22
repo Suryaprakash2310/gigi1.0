@@ -42,6 +42,7 @@ export const SingleEmpDetail = () => {
   const [selectedToolShop, setSelectedToolShop] = useState<any[]>([])
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingApprovalData, setPendingApprovalData] = useState<any>(null);
   const { login, userRole } = useContext(AuthContext);
 
   // ─── Audio Guide ───
@@ -203,7 +204,6 @@ export const SingleEmpDetail = () => {
       setCoords(location);
       setErrors((prev) => ({ ...prev, location: '' }));
       Alert.alert("Location detected");
-      console.log("Detected Location:", location);
     } catch (err: any) {
       Alert.alert("Location Error", err.message);
     } finally {
@@ -214,16 +214,6 @@ export const SingleEmpDetail = () => {
   const submitRegistration = async () => {
     try {
       setIsSubmitting(true);
-      const data = new FormData();
-
-      // Common fields included in majority of roles
-      if (formData.avatar) {
-        data.append('avatar', {
-          uri: formData.avatar,
-          name: 'avatar.jpg',
-          type: 'image/jpeg',
-        } as any);
-      }
 
       let response;
       if (role === UserRole.SINGLE_EMPLOYEE) {
@@ -235,6 +225,7 @@ export const SingleEmpDetail = () => {
           latitude: coords?.latitude,
           services: formData.services.map((s: any) => s._id),
           role: UserRole.SINGLE_EMPLOYEE,
+          avatar: formData.avatar,
         });
       } else if (role === UserRole.MULTI_EMPLOYEE) {
         response = await RegisterAPI.multipleEmployee({
@@ -248,6 +239,7 @@ export const SingleEmpDetail = () => {
           latitude: coords?.latitude,
           ownerAadhaar: formData.aadharNo,      // MUST match backend enum exactly
           services: formData.services.map((s: any) => s._id),
+          avatar: formData.avatar,
         });
       } else {
         response = await RegisterAPI.toolShop({
@@ -259,14 +251,26 @@ export const SingleEmpDetail = () => {
           latitude: coords?.latitude,
           categories: formData.toolShopDomain, // ids
           role: UserRole.TOOL_SHOP,
+          avatar: formData.avatar,
         });
       }
 
       if (response.data?.token) {
         Alert.alert("Registration Successful");
-        console.log('Registration Response:', response.data);
         const { token, role, id } = response.data;
         await login(role, token, id);
+      } else {
+        const approvalMessage =
+          response.data?.message ||
+          "Registration successful. Your account will be verified and approved by the admin within 2-3 days. You can login once approved.";
+        setPendingApprovalData({
+          ...response.data,
+          message: approvalMessage,
+        });
+        Alert.alert(
+          "Registration Submitted - Pending Approval",
+          approvalMessage
+        );
       }
     } catch (err: any) {
       Alert.alert("Error", err.response?.data?.message || "Registration failed");
@@ -275,33 +279,7 @@ export const SingleEmpDetail = () => {
     }
   };
 
-  //const token = response.data.token;
 
-  // 2️⃣ Add all selected services in one API call
-  //     const selectedIds = formData.services.map((s: any) => s._id);
-
-  // try {
-  //   const serviceResponse = await ServiceAPI.addMultipleServices(token, selectedIds);
-  //   console.log("Service Response:", serviceResponse);
-  //   await new Promise(resolve => setTimeout(resolve, 2000));
-  //   login(role, token);
-  // } catch (serviceErr) {
-  //   console.error("❌ Service Add Error:", serviceErr);
-  //   Alert.alert("Error", "Service assignment failed. Please try again.");
-  // }
-
-
-  // 3️⃣ Save token + role and login
-  // await AsyncStorage.setItem("userToken", token);
-  // await AsyncStorage.setItem("userRole", role);
-
-
-  //   Alert.alert("Success", "Employee registered with services!");
-  // } catch (err) {
-  //   console.error("❌ Registration or Service Add Error:", err);
-  //   Alert.alert("Error", "Registration failed. Please try again.");
-  // }
-  // };
 
 
   // open sheet with initialSelected + callback
@@ -329,15 +307,29 @@ export const SingleEmpDetail = () => {
   };
 
   const pickImage = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please grant library access to select a profile picture.');
+        return;
+      }
 
-    if (!res.canceled) {
-      updateField('avatar', res.assets[0].uri);
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+        base64: true,
+      });
+
+      if (!res.canceled && res.assets?.[0]) {
+        const asset = res.assets[0];
+        const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+        updateField('avatar', base64Data);
+      }
+    } catch (err) {
+      console.error('Error picking avatar:', err);
+      Alert.alert('Error', 'Failed to pick image.');
     }
   };
 
@@ -381,7 +373,6 @@ export const SingleEmpDetail = () => {
       const categories = response.categories;   // extract the actual array
 
       if (!Array.isArray(categories)) {
-        console.error("❌ Expected array but got:", categories);
         return;
       }
 
@@ -394,7 +385,7 @@ export const SingleEmpDetail = () => {
       setToolShops(formatted);
       setFilteredToolShop(formatted);
     } catch (err) {
-      console.log("❌ Failed to load categories", err);
+      // Ignore load categories error
     } finally {
       setLoading(false);
     }
@@ -702,6 +693,27 @@ export const SingleEmpDetail = () => {
                 />
               </>
             )}
+            <View style={{
+              marginTop: 16,
+              padding: 14,
+              borderRadius: 12,
+              backgroundColor: '#FFFBEB',
+              borderWidth: 1,
+              borderColor: '#FDE68A',
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 10,
+            }}>
+              <Ionicons name="time-outline" size={22} color="#D97706" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 2 }}>
+                  Admin Approval Required (2–3 Days Verification)
+                </Text>
+                <Text style={{ fontSize: 12, color: '#B45309', lineHeight: 18 }}>
+                  After submitting registration, your account will be verified and approved by the admin within 2–3 days. You can sign in once approved.
+                </Text>
+              </View>
+            </View>
           </>
         );
 
@@ -713,6 +725,123 @@ export const SingleEmpDetail = () => {
   // ==================== STEP HANDLER ====================
 
   // ==================== UI ====================
+  if (pendingApprovalData) {
+    const registeredId =
+      pendingApprovalData.empId ||
+      pendingApprovalData.TeamId ||
+      pendingApprovalData.toolShopId ||
+      null;
+
+    return (
+      <View style={[styles.root, { justifyContent: 'space-between', padding: 24 }]}>
+        <AppHeader
+          showBack={true}
+          onBackPress={() => navigation.reset({ index: 0, routes: [{ name: 'auth' }] })}
+        />
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 }}>
+          <View style={{
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: '#FEF3C7',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 20,
+            borderWidth: 2,
+            borderColor: '#F59E0B',
+          }}>
+            <Ionicons name="time-outline" size={46} color="#D97706" />
+          </View>
+
+          <View style={{
+            backgroundColor: '#FFFBEB',
+            borderColor: '#FDE68A',
+            borderWidth: 1,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 20,
+            marginBottom: 14,
+          }}>
+            <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 12, letterSpacing: 0.5 }}>
+              PENDING ADMIN APPROVAL • 2–3 DAYS
+            </Text>
+          </View>
+
+          <Text style={{
+            fontSize: 24,
+            fontWeight: '700',
+            color: '#1a2e4a',
+            textAlign: 'center',
+            marginBottom: 12,
+          }}>
+            Registration Submitted!
+          </Text>
+
+          {registeredId ? (
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: theme.colors.primary,
+              marginBottom: 12,
+            }}>
+              Reference ID: {registeredId}
+            </Text>
+          ) : null}
+
+          <Text style={{
+            fontSize: 15,
+            color: '#4B5563',
+            textAlign: 'center',
+            lineHeight: 23,
+            marginBottom: 20,
+          }}>
+            Your account has been created and is waiting for admin approval. Account verification will be completed within{' '}
+            <Text style={{ fontWeight: '700', color: '#111827' }}>2–3 days</Text>.
+          </Text>
+
+          <View style={{
+            width: '100%',
+            backgroundColor: '#F8FAFC',
+            borderRadius: 14,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: '#E2E8F0',
+            gap: 8,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="shield-checkmark-outline" size={18} color="#2563EB" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>
+                What happens next?
+              </Text>
+            </View>
+            <Text style={{ fontSize: 13, color: '#475569', lineHeight: 20 }}>
+              • Admin will review and verify your profile details within 2–3 days.{'\n'}
+              • Sign-in is locked until your account is approved by the admin.{'\n'}
+              • Once approved, you can sign in with your registered mobile number.
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ alignItems: 'center', gap: 12, paddingBottom: 16 }}>
+          <CustomButton
+            title="Go to Sign In"
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'phone' }] })}
+            widthCount={0.9}
+          />
+          <TouchableOpacity
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'auth' }] })}
+            style={{ paddingVertical: 8 }}
+          >
+            <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>
+              Back to Home
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.root}

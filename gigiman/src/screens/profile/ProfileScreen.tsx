@@ -198,6 +198,7 @@ const ProfileScreen = ({ navigation }: any) => {
   if (userRole === UserRole.SINGLE_EMPLOYEE || userRole === UserRole.MULTI_EMPLOYEE) {
     const menu = [
       { key: 'details', icon: 'person-outline', title: 'Profile details', subtitle: 'Full info', onPress: () => navigation.navigate('ProfileDetails') },
+      { key: 'shift', icon: 'time-outline', title: 'Shift & Working Slots', subtitle: '10 AM - 5 PM schedule', onPress: () => navigation.navigate('ShiftManagement') },
       { key: 'services', icon: 'construct-outline', title: 'Service Categories', subtitle: 'Manage skills', onPress: () => navigation.navigate('ServiceCategory') },
       { key: 'team', icon: 'people-outline', title: 'Team Management', onPress: () => userRole === UserRole.MULTI_EMPLOYEE ? navigation.navigate('team') : navigation.navigate('TeamRequest') },
       { key: 'bookings', icon: 'calendar-outline', title: "Booking History", onPress: () => navigation.navigate("RecentBookingHistory") },

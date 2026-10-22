@@ -15,15 +15,17 @@ import { TeamEmployeeScreen } from '@/screens/team/TeamDashboardScreen';
 import PocketStack from './PocketStack';
 import EmpProfileStack from './EmpProfileStack';
 import CommissionStack from './CommissionStack';
+import ShiftManagementScreen from '../screens/profile/ShiftManagementScreen';
 
 export type AppStackParamList = {
   Home: undefined;
+  ShiftTab: undefined;
   BookingStack: {
     screen: keyof BookingStackParamList;
     params?: BookingStackParamList[keyof BookingStackParamList];
   };
   Pocket: undefined;
-  ProfileTab: undefined;
+  ProfileTab: { screen?: string; params?: any } | undefined;
   CommissionTab: undefined;
 };
 
@@ -51,6 +53,9 @@ export default function AppStack() {
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
+          } else if (route.name === 'ShiftTab') {
+            iconName = focused ? 'time' : 'time-outline';
+            return <Ionicons name={iconName} size={size} color={color} />;
           } else if (route.name === 'BookingStack') {
             iconName = focused ? 'calendar' : 'calendar-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
@@ -75,10 +80,37 @@ export default function AppStack() {
       })}
     >
       <Tab.Screen name="Home" component={EmpDashboard} />
+      <Tab.Screen
+        name="ShiftTab"
+        component={ShiftManagementScreen}
+        options={{
+          tabBarLabel: "Shifts",
+        }}
+      />
       {/* <Tab.Screen name="Home" component={EmpDashboard} /> */}
-      <Tab.Screen name="BookingStack" component={EmpBookingStack} />
+      <Tab.Screen
+        name="BookingStack"
+        component={EmpBookingStack}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate("BookingStack", {
+              screen: "Booking",
+            });
+          },
+        })}
+      />
       {/* <Tab.Screen name="Pocket" component={PocketStack} /> */}
-      <Tab.Screen name="ProfileTab" component={EmpProfileStack} />
+      <Tab.Screen
+        name="ProfileTab"
+        component={EmpProfileStack}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate("ProfileTab", {
+              screen: "Profile",
+            });
+          },
+        })}
+      />
       {/* <Tab.Screen name="CommissionTab" component={CommissionStack} /> */}
       {/* <Tab.Screen 
         name="NotificationScreen" 

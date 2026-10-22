@@ -56,7 +56,6 @@ export const WalletAPI = {
     const res = await apiClient.post<CreateOrderResponse>("/wallet/add-money", {
       amount,
     });
-    console.log("Create order response:", res.data);
     return res.data;
   },
 

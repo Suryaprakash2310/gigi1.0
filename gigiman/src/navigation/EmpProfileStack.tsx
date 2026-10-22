@@ -18,17 +18,19 @@ import ToolsScreen from '@/screens/profile/ToolsScreen';
 import AboutGigimanScreen from '@/screens/profile/AboutGigimanScreen';
 import TermsAndConditionsScreen from '@/screens/profile/TermsAndConditionsScreen';
 import PrivacyPolicyScreen from '@/screens/profile/PrivacyPolicyScreen';
+import ShiftManagementScreen from '@/screens/profile/ShiftManagementScreen';
 
 export type EmpProfileStackParamList = {
   Profile: undefined;
+  ShiftManagement: undefined;
   team: undefined;
   AddEmp: undefined;
   TeamRequest: undefined;
   EditProfile: undefined;
-  RecentBookingHistory: undefined;
+  RecentBookingHistory: { from?: string; initialFilter?: 'ALL' | 'COMPLETED' | 'ONGOING' | 'PENDING' | 'CANCELLED' } | undefined;
   SettingsScreen: undefined;
   Support: undefined;
-  RaiseIssue: { category?: string, bookingId?: string };
+  RaiseIssue: { category?: string; bookingId?: string; bookingNumber?: string };
   SupportTickets: undefined;
   TicketDetail: { ticketId: string };
   ProfileDetails: undefined;
@@ -45,6 +47,7 @@ export default function EmpProfileStack() {
   return (
     <Stack.Navigator id={undefined} screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="ShiftManagement" component={ShiftManagementScreen} />
       <Stack.Screen name="team" component={TeamEmployeeScreen} />
       <Stack.Screen name="AddEmp" component={AddEmployeeScreen} />
       <Stack.Screen name="TeamRequest" component={TeamRequestsScreen} />

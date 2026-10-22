@@ -14,8 +14,6 @@ export const useTeam = () => {
       setLoading(true);
       const res = await TeamAPI.getTeamStatus();
 
-      //console.log("TEAM STATUS API:", res); // 🔍 DEBUG
-
       setMembers(res.members || []);
       setPendingRequests(res.pendingRequests || []);
     } finally {

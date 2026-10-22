@@ -3,6 +3,7 @@ import React, { useState, useEffect, createContext, ReactNode } from 'react';
 import { socket } from "@/socket/socket";
 import { UserRole } from '@/utils/enums/CommonEnum';
 import { getAuth, signOut } from '@react-native-firebase/auth';
+import { clearRegisteredPushToken } from '@/utils/notification.utils';
 
 // 👇 Define what data and functions are available in this context
 interface AuthContextType {
@@ -34,6 +35,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Load stored user details when app starts
   useEffect(() => {
     const loadAuthData = async () => {
+      const startTime = Date.now();
       try {
         const storedToken = await AsyncStorage.getItem('userToken');
         const storedRole = await AsyncStorage.getItem('userRole');
@@ -44,7 +46,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } catch (error) {
         console.error('Error loading auth data:', error);
       } finally {
-        setIsLoading(false);
+        const elapsed = Date.now() - startTime;
+        const minDisplayTime = 1200;
+        if (elapsed < minDisplayTime) {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, minDisplayTime - elapsed);
+        } else {
+          setIsLoading(false);
+        }
       }
     };
     loadAuthData();
@@ -52,83 +62,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 
 
-  // useEffect(() => {
-  //   if (userToken && userRole) {
-  //     console.log("🔌 Provider socket connecting...");
-  //     socket.connect();
-  //   }
-
-  //   return () => {
-  //     if (socket.connected) {
-  //       console.log("❌ Provider socket disconnect");
-  //       socket.disconnect();
-  //     }
-  //   };
-  // }, [userToken, userRole]);
-  // useEffect(() => {
-  //   let isMounted = true;
-
-  //   const setupSocket = async () => {
-  //     const providerId = await AsyncStorage.getItem("providerId");
-  //     if (!providerId || !userRole) return;
-
-  //     // ✅ ensure connection
-  //     if (!socket.connected) {
-  //       socket.connect();
-  //     }
-
-  //     // ✅ wait until connected
-  //     socket.once("connect", () => {
-  //       if (!isMounted) return;
-
-  //       if (userRole === UserRole.SINGLE_EMPLOYEE) {
-  //         socket.emit("register-employee", { employeeId: providerId });
-  //       }
-
-  //       if (userRole === UserRole.MULTI_EMPLOYEE) {
-  //         socket.emit("register-team", { teamId: providerId });
-  //       }
-
-  //       if (userRole === UserRole.TOOL_SHOP) {
-  //         socket.emit("register-toolshop", { shopId: providerId });
-  //       }
-
-  //       console.log("✅ Provider registered:", userRole, providerId);
-  //     });
-  //   };
-
-  //   setupSocket();
-
-  //   return () => {
-
-  //     isMounted = false;
-  //   };
-  // }, [userRole]);
-
-
-
-  // useEffect(() => {
-  //   socket.on("new-booking-request", ({ bookingId }) => {
-  //     console.log("📥 New booking request:", bookingId);
-  //   });
-
-  //   socket.on("team-booking-request", ({ bookingId }) => {
-  //     console.log("🔥 TEAM REQUEST RECEIVED:", bookingId);
-  //   });
-
-  //   return () => {
-  //     socket.off("new-booking-request");
-  //     socket.off("team-booking-request");
-  //   };
-  // }, []);
-
-
-
-
-
   // Login → Save both token + role
   const login = async (role: string, token?: string, id?: string) => {
-    console.log("🔐 Logging in:", { role, token, id });
     try {
       if (!token || !role) {
         throw new Error("Invalid login data");
@@ -163,6 +98,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         'token',
         'employeeId',
       ]);
+      await clearRegisteredPushToken();
       setUserToken(null);
       setUserRole(null);
     } catch (error) {

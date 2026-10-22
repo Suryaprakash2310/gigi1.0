@@ -11,9 +11,17 @@ export interface EmployeeProfile {
   TeamId?: string;
   shopName?: string;
   phoneMasked?: string;
+  phoneNo?: string;
   address?: any;
   storeLocation?: string;
   avatar?: string;
+  verified?: string;
+  services?: any[];
+  capableservice?: any[];
+  categories?: any[];
+  unpaidCommission?: number;
+  isBlockedByCommission?: boolean;
+  commissionThreshold?: number;
 }
 
 export interface GetProfileResponse {
@@ -23,30 +31,46 @@ export interface GetProfileResponse {
 
 export interface Booking {
   _id: string;
+  bookingCode?: string;
+  bookingId?: string;
   createdAt: string;
   status: string;
   totalPrice?: number;
+  isScheduled?: boolean;
+  scheduleDateTime?: string;
 
   serviceCategoryName?: string;
+  serviceName?: string;
+  address?: string;
+  advancePayment?: number;
+  remainingAmount?: number;
+  paymentStatus?: string;
+  durationInMinutes?: number | string;
+  employeeCount?: number | string;
+  problemDescription?: string;
+  items?: Array<{ name?: string; partName?: string; quantity?: number; qty?: number; price?: number }>;
 
   user?: {
-    fullname: string;
-    phoneMasked: string;
+    fullname?: string;
+    phoneMasked?: string;
+    phone?: string;
+    phoneNumber?: string;
+    address?: string;
   };
 
   primaryEmployee?: {
-    empId: string;
-    fullname: string;
+    empId?: string;
+    fullname?: string;
   };
 
   servicerCompany?: {
-    storeName: string;
-    TeamId: string;
+    storeName?: string;
+    TeamId?: string;
   };
 
   selectedToolshop?: {
-    toolShopId: string;
-    storeLocation: string;
+    toolShopId?: string;
+    storeLocation?: string;
   };
 }
 

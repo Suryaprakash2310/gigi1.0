@@ -8,6 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { AppStackParamList } from "@/navigation/EmployeeStack";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { playBookingSound, stopBookingSound } from "@/utils/BookingSoundManager";
+import { parseCoordinates } from "@/utils/location";
 
 type TabNavProp = BottomTabNavigationProp<AppStackParamList, "BookingStack">;
 
@@ -20,10 +21,6 @@ export default function BookingSocketListener() {
     } = useProviderBooking();
     const navigation = useNavigation<TabNavProp>();
     const { userRole } = useContext(AuthContext);
-
-    useEffect(() => {
-        console.log("🧠 BookingSocketListener mounted");
-    }, []);
 
     // ✅ Keep refs in sync so socket handlers always read latest values
     //    without needing to re-subscribe on every workingMode/userRole change.
@@ -40,9 +37,9 @@ export default function BookingSocketListener() {
     useEffect(() => {
         const handleNewBooking = async (payload: any) => {
             if (!workingModeRef.current) return;   // ✅ always fresh
-            console.log("🔥 EVENT RECEIVED");
-            console.log("📥 New booking request:", payload);
             if (!payload || !payload.bookingId) return;
+
+            const coords = parseCoordinates(payload);
 
             addBookingRequest({
                 id: payload.bookingId,
@@ -51,8 +48,11 @@ export default function BookingSocketListener() {
                 serviceCategoryName: payload.service,
                 cost: payload.totalPrice,
                 address: payload.address,
-                coordinates: payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates,
+                coordinates: coords ? [coords.longitude, coords.latitude] : (payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates),
                 employeeCount: payload.employeeCount,
+                isScheduled: payload.isScheduled,
+                scheduleDateTime: payload.scheduleDateTime,
+                createdAt: payload.createdAt,
                 expiresAt: Date.now() + 50000,
             });
 
@@ -61,7 +61,6 @@ export default function BookingSocketListener() {
 
         const handleJobAssigned = async (payload: any) => {
             if (!workingModeRef.current) return; // ✅ Guard added
-            console.log("📦 Job assigned:", payload.bookingId);
             removeBookingRequest(payload.bookingId);
             await stopBookingSound();
         };
@@ -70,7 +69,7 @@ export default function BookingSocketListener() {
             if (userRoleRef.current !== UserRole.MULTI_EMPLOYEE) return; // ✅ always fresh
             if (!workingModeRef.current) return;                         // ✅ always fresh
 
-            console.log("🔥 Team booking:", payload);
+            const coords = parseCoordinates(payload);
 
             addBookingRequest({
                 id: payload.bookingId,
@@ -78,12 +77,15 @@ export default function BookingSocketListener() {
                 work: payload.service,
                 serviceCategoryName: payload.service,
                 address: payload.address,
-                coordinates: payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates,
+                coordinates: coords ? [coords.longitude, coords.latitude] : (payload.coordinates || payload.location?.coordinates || payload.userLocation?.coordinates),
                 employeeCount: payload.employeeCount,
                 isTeam: true,
                 teamMembers: payload.teamMembers,
                 teamId: payload.teamId,
                 cost: payload.totalPrice,
+                isScheduled: payload.isScheduled,
+                scheduleDateTime: payload.scheduleDateTime,
+                createdAt: payload.createdAt,
                 expiresAt: Date.now() + 50000,
             });
 
@@ -91,17 +93,26 @@ export default function BookingSocketListener() {
         };
 
         const handleBookingConfirmed = async (payload: any) => {
-            console.log("🟢 Booking confirmed socket event received (Manual assignment):", payload);
             const bookingId = payload?.booking?._id || payload?.bookingId;
             if (!bookingId) return;
 
             await setActiveBookingId(bookingId);
             await stopBookingSound();
 
-            navigation.navigate("BookingStack", {
-                screen: "Booking",
-                params: { bookingId }
-            });
+            try {
+                (navigation as any).navigate("EmployeeTabs", {
+                    screen: "BookingStack",
+                    params: {
+                        screen: "Booking",
+                        params: { bookingId }
+                    }
+                });
+            } catch {
+                navigation.navigate("BookingStack", {
+                    screen: "Booking",
+                    params: { bookingId }
+                });
+            }
         };
 
         socket.on("new-booking-request", handleNewBooking);
@@ -122,13 +133,22 @@ export default function BookingSocketListener() {
     ====================================================== */
     useEffect(() => {
         const onLeaderOtpReady = async ({ bookingId }: any) => {
-            console.log("🟢 LEADER OTP READY:", bookingId);
             await stopBookingSound();
 
-            navigation.navigate("BookingStack", {
-                screen: "Booking",
-                params: { bookingId }
-            });
+            try {
+                (navigation as any).navigate("EmployeeTabs", {
+                    screen: "BookingStack",
+                    params: {
+                        screen: "Booking",
+                        params: { bookingId }
+                    }
+                });
+            } catch {
+                navigation.navigate("BookingStack", {
+                    screen: "Booking",
+                    params: { bookingId }
+                });
+            }
         };
 
         socket.on("leader-otp-ready", onLeaderOtpReady);
@@ -144,7 +164,6 @@ export default function BookingSocketListener() {
     useEffect(() => {
         const subscription = AppState.addEventListener("change", async (nextState) => {
             if (nextState !== "active") {
-                console.log("📱 App went to background — stopping booking sound");
                 await stopBookingSound();
             }
         });

@@ -10,6 +10,9 @@ import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BookingSocketListener from '@/listeners/BookingListener';
 import NotificationScreen from '../screens/NotificationScreen';
+import RecentBookingHistoryScreen from '../screens/profile/RecentBookingHistoryScreen';
+
+import InitialSplashScreen from '../components/InitialSplashScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -17,11 +20,7 @@ export default function RootNavigator() {
   const { userToken, userRole, isLoading } = useContext(AuthContext);
 
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#000" />
-      </View>
-    );
+    return <InitialSplashScreen />;
   }
 
   return (
@@ -40,6 +39,7 @@ export default function RootNavigator() {
               <RootStack.Screen name="AuthFallback" component={AuthStack} />
             )}
             <RootStack.Screen name="NotificationScreen" component={NotificationScreen} />
+            <RootStack.Screen name="RecentBookingHistory" component={RecentBookingHistoryScreen} />
           </RootStack.Navigator>
         )}
       </NavigationContainer>

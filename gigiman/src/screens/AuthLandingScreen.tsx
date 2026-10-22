@@ -119,7 +119,6 @@ export default function AuthLandingScreen() {
           <Image
             source={require('../../assets/icons/gigiman_logo.png')}
             style={styles.logo}
-            resizeMode="contain"
           />
         </Animated.View>
 
@@ -157,7 +156,7 @@ export default function AuthLandingScreen() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f7ff',
+    backgroundColor: theme.colors.background,
     overflow: 'hidden',
   },
 
@@ -167,7 +166,7 @@ const styles = StyleSheet.create({
     width: width * 1.5,
     height: width * 1.5,
     borderRadius: width,
-    backgroundColor: 'rgba(112, 119, 255, 0.25)',
+    backgroundColor: 'rgba(38, 65, 60, 0.12)',
     top: -200,
     left: -200,
     opacity: 0.6,
@@ -179,7 +178,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 100,
-    backgroundColor: 'rgba(180, 90, 255, 0.15)',
+    backgroundColor: 'rgba(38, 65, 60, 0.08)',
     top: 40,
     right: -40,
   },
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 80,
-    backgroundColor: 'rgba(90, 220, 255, 0.15)',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     bottom: 80,
     left: -30,
   },
@@ -203,8 +202,8 @@ const styles = StyleSheet.create({
   logoWrapper: {
     width: width * 0.52,
     height: width * 0.52,
-    borderRadius: width * 0.28,
-    backgroundColor: '#ffffff',
+    borderRadius: (width * 0.52) / 2,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 12,
@@ -212,11 +211,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
+    overflow: 'hidden',
   },
 
   logo: {
-    width: '78%',
-    height: '78%',
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
 
   title: {

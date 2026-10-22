@@ -18,6 +18,7 @@ import { EmpProfileStackParamList } from '@/navigation/EmpProfileStack';
 import { TicketAPI, Ticket, TicketMessage } from '@/api/ticket.api';
 import { socket } from '@/socket/socket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatBookingId } from '@/utils/booking.utils';
 
 type TicketDetailRouteProp = RouteProp<EmpProfileStackParamList, 'TicketDetail'>;
 
@@ -227,7 +228,7 @@ export default function TicketDetailScreen() {
                 <Text style={styles.infoLabel}>Initial Message:</Text>
                 <Text style={styles.infoValue}>{ticket.message}</Text>
                 {ticket.bookingId ? (
-                  <Text style={styles.bookingId}>Booking ID: #{ticket.bookingId}</Text>
+                  <Text style={styles.bookingId}>Booking ID: {formatBookingId(ticket.bookingId)}</Text>
                 ) : null}
               </View>
             }
@@ -284,7 +285,7 @@ export default function TicketDetailScreen() {
             {ticket.bookingId ? (
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Booking ID</Text>
-                <Text style={styles.fieldValue}>#{ticket.bookingId}</Text>
+                <Text style={styles.fieldValue}>{formatBookingId(ticket.bookingId)}</Text>
               </View>
             ) : null}
 

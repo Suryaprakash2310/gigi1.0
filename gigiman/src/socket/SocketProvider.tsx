@@ -17,7 +17,6 @@ export const SocketProvider = ({ children }: any) => {
 
     socket.auth = { token: userToken };
     socket.connect();
-    console.log("🔌 Provider socket connecting...");
 
     // ✅ Shared registration logic — runs on first connect AND every reconnect
     const registerProvider = async () => {
@@ -35,34 +34,29 @@ export const SocketProvider = ({ children }: any) => {
       if (role === UserRole.TOOL_SHOP) {
         socket.emit("register-toolshop", { shopId: providerId });
       }
-      console.log("✅ Provider registered:", role, providerId);
 
       // Rejoin active booking tracking room if one exists
       const activeBookingId = await AsyncStorage.getItem("activeBookingId");
       if (activeBookingId) {
         socket.emit("join-tracking", { bookingId: activeBookingId });
-        console.log("📍 Rejoined tracking room:", activeBookingId);
       }
     };
 
     const onConnect = () => {
-      console.log("✅ Provider socket connected:", socket.id);
       registerProvider(); // 🔥 Register on first connect
     };
 
     const onReconnect = () => {
-      console.log("🔁 Socket reconnected");
       registerProvider(); // 🔥 Re-register on every reconnect
       DeviceEventEmitter.emit("socket:reconnected");
-      console.log("📡 Emitted socket:reconnected for screen hydration");
     };
 
     const onDisconnect = (reason: string) => {
-      console.log("❌ Provider socket disconnected:", reason);
+      // Handle socket disconnect
     };
 
     const onError = (err: any) => {
-      console.log("⚠️ Provider socket error:", err.message);
+      // Handle socket error
     };
 
     socket.on("connect", onConnect);

@@ -9,9 +9,8 @@ import AppHeader from '@/components/AppHeader';
 
 const settingsOptions = [
   { key: 'profile', icon: 'person-outline', label: 'Edit Profile', screen: 'EditProfile' }, 
-  { key: 'notifications', icon: 'notifications-outline', label: 'Notifications', screen: 'NotificationSettings' },
   { key: 'language', icon: 'language-outline', label: 'Language', screen: 'LanguageSettings' },
-  { key: 'about', icon: 'information-circle-outline', label: 'About', screen: 'About' },
+  { key: 'about', icon: 'information-circle-outline', label: 'About', screen: 'AboutGigiman' },
   { key: 'privacy', icon: 'shield-checkmark-outline', label: 'Privacy Policy', screen: 'PrivacyPolicy' },
   { key: 'terms', icon: 'document-text-outline', label: 'Terms & Conditions', screen: 'TermsAndConditions' },
 ];
@@ -24,9 +23,6 @@ export default function SettingsScreen() {
   let roleOptions: Array<{ key: string; icon: string; label: string; screen: string }> = [];
   if (userRole === UserRole.TOOL_SHOP) {
     roleOptions.push({ key: 'shopSettings', icon: 'settings-outline', label: 'Shop Settings', screen: 'ShopSettings' });
-  }
-  if (userRole === UserRole.SINGLE_EMPLOYEE || userRole === UserRole.MULTI_EMPLOYEE) {
-    roleOptions.push({ key: 'bank', icon: 'card-outline', label: 'Bank Details', screen: 'Banking' });
   }
 
   const allOptions = [...settingsOptions, ...roleOptions];

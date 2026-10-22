@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/theme/theme';
 import { useNavigation } from '@react-navigation/native';
 import { TicketAPI, Ticket } from '@/api/ticket.api';
+import { formatBookingId } from '@/utils/booking.utils';
 
 export default function SupportTicketsScreen() {
   const navigation = useNavigation<any>();
@@ -65,7 +66,14 @@ export default function SupportTicketsScreen() {
         <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString()}</Text>
       </View>
 
-      <Text style={styles.categoryText}>{item.category}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Text style={styles.categoryText}>{item.category}</Text>
+        {item.bookingId ? (
+          <View style={styles.bookingBadge}>
+            <Text style={styles.bookingBadgeText}>{formatBookingId(item.bookingId)}</Text>
+          </View>
+        ) : null}
+      </View>
       <Text style={styles.messagePreview} numberOfLines={2}>{item.message}</Text>
 
       <View style={styles.ticketFooter}>
@@ -212,7 +220,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 6,
+  },
+  bookingBadge: {
+    backgroundColor: '#ECEFF1',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  bookingBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#455A64',
   },
   messagePreview: {
     fontSize: 14,

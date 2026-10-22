@@ -15,46 +15,23 @@ const ServiceSelector: React.FC<Props> = ({ onSelectService }) => {
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // useEffect(() => {
-  //   const fetchServices = async () => {
-  //     try {
-  //       const data = await ServiceAPI.getAll();
-  //       if (data.success && data.services) {
-  //         setServices(data.services);
-  //         setFilteredServices(data.services);
-  //         console.log(data.services);
-  //       }
-  //     } catch (err) {
-  //       Alert.alert("Error", "Failed to fetch services");
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   fetchServices();
-  // }, []);
-
   useEffect(() => {
-  const fetchServices = async () => {
-    try {
-      console.log("Fetching services from API...");
-      const data = await ServiceAPI.getAll();
-      console.log("API Response:", data);
+    const fetchServices = async () => {
+      try {
+        const data = await ServiceAPI.getAll();
 
-      if (data.services && Array.isArray(data.services)) {
-        setServices(data.services);
-        setFilteredServices(data.services);
-      } else {
-        console.warn("⚠️ No services found or unexpected data:", data);
+        if (data.services && Array.isArray(data.services)) {
+          setServices(data.services);
+          setFilteredServices(data.services);
+        }
+      } catch (err) {
+        Alert.alert("Error", "Failed to fetch services");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("❌ Fetch error:", err);
-      Alert.alert("Error", "Failed to fetch services");
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchServices();
-}, []);
+    };
+    fetchServices();
+  }, []);
 
 
   useEffect(() => {

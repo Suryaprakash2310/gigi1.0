@@ -76,7 +76,7 @@ const removeEmployee = (id: string) => {
 
        <Text>{t('common.save')}</Text>
 
-      {/* <CustomButton title="Continue" disabled={true} onPress={() => console.log('Continue')} /> */}
+      {/* <CustomButton title="Continue" disabled={true} onPress={() => {}} /> */}
       <CustomButton title="Delete"  onPress={openAddEmployees} />
 
 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -411,11 +411,9 @@ const chipStyles = StyleSheet.create({
 
 //   // 🔹 Handlers
 //   const handleAccept = (id: number) => {
-//     console.log(`Accepted Request ID: ${id}`);
 //   };
 
 //   const handleReject = (id: number) => {
-//     console.log(`Rejected Request ID: ${id}`);
 //   };
 
 //   return (
@@ -425,14 +423,14 @@ const chipStyles = StyleSheet.create({
 //         title='Gigiman'
 //         showBack={false}
 //         rightIcon='notifications-outline'
-//         onRightPress={() => console.log('notify')}
+//         onRightPress={() => {}}
 //       />
 //       <ScrollView contentContainerStyle={styles.scrollArea}>
 //         <View style={styles.headerContainer}>
 
 //           <WorkingModeToggle
 //             initialValue={true}
-//             onToggle={(value) => console.log('Working mode is now:', value)}
+//             onToggle={(value) => {}}
 //           />
 //           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
 //           <Image source={require('../../assets/icons/Dashboard.svg')} 

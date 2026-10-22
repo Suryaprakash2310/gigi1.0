@@ -44,3 +44,29 @@ export const markServicerNotificationsRead = async (): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * Updates the Servicer's FCM push token in the backend
+ */
+export const updateServicerFcmToken = async (fcmToken: string): Promise<{ success: boolean; fcmToken: string }> => {
+  try {
+    const response = await apiClient.post('/notifications/servicer/fcm-token', { fcmToken });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating servicer FCM token:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates the User's FCM push token in the backend
+ */
+export const updateUserFcmToken = async (fcmToken: string): Promise<{ success: boolean; fcmToken: string }> => {
+  try {
+    const response = await apiClient.post('/notifications/user/fcm-token', { fcmToken });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user FCM token:', error);
+    throw error;
+  }
+};

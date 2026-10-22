@@ -108,13 +108,11 @@ export const ToolShopProvider: React.FC<{ children: React.ReactNode }> = ({
    
   useEffect(() => {
     if (!workingMode) return;
-        console.log("🔌 Listening for toolshop requests...");
     const handleIncomingRequest = async ({
       requestId,
     }: {
       requestId: string;
     }) => {
-      console.log("📥 Received toolshop request:", requestId);
       try {
         const request = await fetchPartRequestById(requestId);
         if (!request) return;
@@ -124,7 +122,7 @@ export const ToolShopProvider: React.FC<{ children: React.ReactNode }> = ({
           return [{ ...request, requestId: request._id }, ...prev];
         });
       } catch (err) {
-        console.log("Failed to fetch request:", err);
+        // Ignore fetch error
       }
     };
 
@@ -178,7 +176,6 @@ export const ToolShopProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const handleOtpSuccess = ({ requestId }: any) => {
-      console.log("✅ Part OTP verified:", requestId);
       setOtpModalVisible(false);
       setAcceptedRequests((prev) =>
         prev.filter((r) => r.requestId !== requestId)
@@ -188,7 +185,7 @@ export const ToolShopProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const handleOtpFailed = ({ message }: any) => {
-      console.log("❌ Part OTP failed:", message);
+      // Handle OTP failed silently or via UI
     };
 
     socket.on("part-otp-success", handleOtpSuccess);
@@ -207,7 +204,6 @@ export const ToolShopProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (!trackingId) return;
 
-    console.log("🔌 Joining tracking room:", trackingId);
     socket.emit("join-tracking", { bookingId: trackingId });
 
     const handleLocationUpdate = (data: any) => {

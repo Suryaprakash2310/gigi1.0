@@ -38,10 +38,9 @@ export default function AddServiceScreen() {
         const id = await AsyncStorage.getItem("providerId");
         if (id) {
           setProviderId(id);
-          console.log("Provider ID:", id);
         }
       } catch (err) {
-        console.error("Error reading providerId:", err);
+        // Ignore error
       }
     })();
 
@@ -53,17 +52,12 @@ export default function AddServiceScreen() {
   const fetchCategories = async () => {
     try {
       if (!domainServiceId) {
-        console.log("❌ domainServiceId missing");
         return;
       }
-
-      console.log("📡 Fetching services for:", domainServiceId);
 
       const res = await apiClient.get(
         `auth/showsubservice/${domainServiceId}`
       );
-
-      console.log("📦 API Response:", res.data);
 
       const flatCategories =
         (res.data as any)?.services?.flatMap((s: any) =>
@@ -77,11 +71,9 @@ export default function AddServiceScreen() {
           }))
         ) || [];
 
-      console.log("📋 Flattened Categories:", flatCategories);
-
       setCategories(flatCategories);
     } catch (err) {
-      console.log("❌ Failed to load services:", err);
+      // Ignore load error
     } finally {
       setLoading(false);
     }
@@ -100,12 +92,6 @@ export default function AddServiceScreen() {
   const handleConfirmService = () => {
     if (!selectedService) return;
 
-    console.log("📤 Proposing service:", selectedService.serviceCategoryName);
-    console.log("📤 EMITTING extra-service-propose", {
-      bookingId,
-      employeeId: providerId,
-      serviceCategoryId: selectedService._id,
-    });
     socket.emit("extra-service-propose", {
       bookingId,
       serviceCategoryId: selectedService._id,

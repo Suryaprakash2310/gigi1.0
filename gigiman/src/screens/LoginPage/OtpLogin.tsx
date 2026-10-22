@@ -42,11 +42,9 @@ export default function OtpLoginScreen() {
         isConfirming.current = true;
         try {
           setLoading(true);
-          console.log('⚡ Auto-verified by Google Play Services. Getting Firebase token...');
           const firebaseToken = await user.getIdToken();
           if (!firebaseToken) throw new Error('Failed to get Firebase token.');
 
-          console.log('Firebase verified. Verifying with backend...');
           const res = await AuthAPI.verifyOtp(phone, firebaseToken);
           if (!res?.token || !res?.role) throw new Error('Invalid login response from backend');
 
@@ -83,7 +81,6 @@ export default function OtpLoginScreen() {
         throw new Error("Verification session has expired. Please tap 'Resend' to get a new code.");
       }
 
-      console.log('Verifying Firebase OTP...');
       let userCredential;
       const currentUser = getAuth().currentUser;
 
@@ -99,7 +96,6 @@ export default function OtpLoginScreen() {
         throw new Error("Failed to get Firebase token.");
       }
 
-      console.log('Firebase verified. Verifying with backend...');
       const res = await AuthAPI.verifyOtp(phone, firebaseToken);
 
       if (!res?.token || !res?.role) {
@@ -112,7 +108,15 @@ export default function OtpLoginScreen() {
 
     } catch (error: any) {
       console.error('Verify OTP error:', error);
-      if (error.code === 'auth/too-many-requests') {
+      const status = error?.response?.status;
+      const backendMsg = error?.response?.data?.message;
+
+      if (status === 403 || (backendMsg && backendMsg.toLowerCase().includes('approval'))) {
+        Alert.alert(
+          'Account Pending Approval (2–3 Days)',
+          backendMsg || 'Your account is pending admin approval (verification takes 2-3 days). You can login once the admin approves your account.'
+        );
+      } else if (error.code === 'auth/too-many-requests') {
         Alert.alert('Verification Failed', 'Too many requests. Please try again later.');
       } else if (error.code === 'auth/invalid-verification-code') {
         Alert.alert('Verification Failed', 'Invalid verification code. Please check and try again.');
@@ -121,7 +125,7 @@ export default function OtpLoginScreen() {
       } else {
         Alert.alert(
           'Verification Failed',
-          error?.message || error?.response?.data?.message || 'Something went wrong'
+          backendMsg || error?.message || 'Something went wrong'
         );
       }
       otpRef.current?.reset();
@@ -134,10 +138,9 @@ export default function OtpLoginScreen() {
   const handleResend = async () => {
     try {
       setLoading(true);
-      console.log('Resending Firebase OTP...');
       const authInstance = getAuth();
       const newConfirmation = await signInWithPhoneNumber(authInstance, `+91${phone}`);
-      setConfirmationResult(newConfirmation);
+      setConfirmationResult(newConfirmation as any);
       setConfirmation(newConfirmation);
       otpRef.current?.reset();
       Alert.alert('Success', 'OTP resent successfully');
@@ -161,7 +164,7 @@ export default function OtpLoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1, justifyContent: 'space-between' }}>
           <AppHeader showBack={true} onBackPress={() => navigation.goBack()} />

@@ -17,6 +17,9 @@ export interface IncomingBooking {
   teamId?: string;
   expiresAt?: number;
   coordinates?: number[];
+  isScheduled?: boolean;
+  scheduleDateTime?: string;
+  createdAt?: string;
 }
 
 interface PickupDetails {
@@ -81,7 +84,6 @@ export function ProviderBookingProvider({ children }: any) {
   const setOtpVerified = async (val: boolean) => {
     _setOtpVerified(val);
     await AsyncStorage.setItem("otpVerified", JSON.stringify(val));
-    console.log("💾 Persisted otpVerified:", val);
   };
 
   // Persistence Logic for Booking ID
@@ -89,12 +91,10 @@ export function ProviderBookingProvider({ children }: any) {
     _setActiveBookingId(id);
     if (id) {
       await AsyncStorage.setItem("activeBookingId", id);
-      console.log("💾 Persisted activeBookingId:", id);
     } else {
       await AsyncStorage.removeItem("activeBookingId");
       await AsyncStorage.removeItem("otpVerified"); // Clear OTP when ID is cleared
       _setOtpVerified(false);
-      console.log("🗑 Cleared booking state from storage");
     }
   };
 
@@ -108,29 +108,57 @@ export function ProviderBookingProvider({ children }: any) {
         ]);
 
         if (savedId) {
-          console.log("🔄 Restored activeBookingId from storage:", savedId);
           _setActiveBookingId(savedId);
 
-          // ✅ Verify otpVerified against live API rather than trusting stale cache
+          // ✅ Verify booking status and otpVerified against live API rather than trusting stale cache
           try {
             const res = await apiClient.get(`/booking/${savedId}`);
             const job = (res.data as any)?.booking ?? res.data;
             const status: string = job?.status ?? "";
             const normalizedStatus = status.toLowerCase();
 
-            const BOOKING_STATUS = { IN_PROGRESS: "in_progress" } as const;
+            // Clear state if booking is already finished or cancelled
+            if (
+              normalizedStatus === "completed" ||
+              normalizedStatus === "cancelled" ||
+              normalizedStatus === "canceled" ||
+              normalizedStatus === "rejected"
+            ) {
+              _setActiveBookingId(null);
+              await AsyncStorage.removeItem("activeBookingId");
+              await AsyncStorage.removeItem("otpVerified");
+              _setOtpVerified(false);
 
-            console.log("📊 Backend job status (boot):", status);
-            console.log("🔎 Normalized status (boot):", normalizedStatus);
+              // Check backend for any other ongoing active booking
+              try {
+                const activeRes = await apiClient.get<{ success: boolean; booking: any }>("/booking/active/servicer");
+                if (activeRes.data?.booking?._id) {
+                  const activeId = activeRes.data.booking._id;
+                  _setActiveBookingId(activeId);
+                  await AsyncStorage.setItem("activeBookingId", activeId);
+                  const isProgress = (activeRes.data.booking.status || "").toLowerCase() === "in_progress";
+                  _setOtpVerified(isProgress);
+                  await AsyncStorage.setItem("otpVerified", JSON.stringify(isProgress));
+                }
+              } catch (activeErr) {}
+              return;
+            }
+
+            const BOOKING_STATUS = { IN_PROGRESS: "in_progress" } as const;
 
             const realOtpVerified = normalizedStatus === BOOKING_STATUS.IN_PROGRESS;
 
-            console.log("🔍 API-verified otpVerified:", realOtpVerified, "(status:", status, ")");
             _setOtpVerified(realOtpVerified);
             await AsyncStorage.setItem("otpVerified", JSON.stringify(realOtpVerified));
-          } catch (apiErr) {
+          } catch (apiErr: any) {
+            if (apiErr?.response?.status === 404 || apiErr?.response?.status === 403) {
+              _setActiveBookingId(null);
+              await AsyncStorage.removeItem("activeBookingId");
+              await AsyncStorage.removeItem("otpVerified");
+              _setOtpVerified(false);
+              return;
+            }
             // Network offline — fall back to cached value
-            console.log("⚠ API unreachable on boot, using cached otpVerified");
             if (savedOtp) {
               try {
                 _setOtpVerified(JSON.parse(savedOtp));
@@ -138,6 +166,21 @@ export function ProviderBookingProvider({ children }: any) {
                 console.error("Failed to parse savedOtp", e);
               }
             }
+          }
+        } else {
+          // Check backend for ongoing active booking if storage was empty
+          try {
+            const res = await apiClient.get<{ success: boolean; booking: any }>("/booking/active/servicer");
+            if (res.data?.booking?._id) {
+              const activeId = res.data.booking._id;
+              _setActiveBookingId(activeId);
+              await AsyncStorage.setItem("activeBookingId", activeId);
+              const isProgress = (res.data.booking.status || "").toLowerCase() === "in_progress";
+              _setOtpVerified(isProgress);
+              await AsyncStorage.setItem("otpVerified", JSON.stringify(isProgress));
+            }
+          } catch (backendErr) {
+            // Offline or no active booking
           }
         }
       } catch (e) {

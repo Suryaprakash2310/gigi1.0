@@ -48,7 +48,7 @@ export const useLiveTracking = (
                     }
                 );
             } catch (err) {
-                console.log("Tracking error:", err);
+                // Ignore tracking error
             }
         };
 
@@ -63,7 +63,7 @@ export const useLiveTracking = (
                 try {
                     subscription.remove();
                 } catch (err) {
-                    console.log("Safe remove error:", err);
+                    // Ignore remove error
                 }
             }
         };

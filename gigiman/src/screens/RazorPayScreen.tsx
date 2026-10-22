@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, ActivityIndicator, Alert } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -7,19 +7,14 @@ import { paymentSuccessApi } from "@/api/payment.api";
 import { injectRazorpayData } from "@/utils/razorpayInjector";
 import { razorpayHTML } from "@/utils/razorpayTemplate";
 import { RZ_KEY_ID } from "@/utils/constant/razorzay.constant";
-import Constants from "expo-constants";
+import { useProviderBooking } from "@/context/ProviderBookingContext";
 
 export default function RazorpayScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { resetBookingState } = useProviderBooking();
 
   const { bookingId, amount, orderId } = route.params;
-  console.log("🧪 Razorpay inputs:", {
-  RZ_KEY_ID,
-  bookingId,
-  amount,
-  orderId,
-});
 
 
   const html = injectRazorpayData(
@@ -28,11 +23,7 @@ export default function RazorpayScreen() {
     amount,
     orderId
   );
-  useEffect(() => {
-    console.log("Razorpay HTML:", html);
-    console.log("🔍 FULL CONSTANTS:", Constants);
-console.log("🔍 expoConfig.extra:", Constants.expoConfig?.extra);
-  }, []);
+
 
   const onMessage = async (event: any) => {
   const data = JSON.parse(event.nativeEvent.data);
@@ -43,16 +34,21 @@ console.log("🔍 expoConfig.extra:", Constants.expoConfig?.extra);
     return;
   }
 
-  await paymentSuccessApi({
-    bookingId,
-    paymentMethod: "RAZORPAY",
-    razorpayOrderId: data.razorpay_order_id,
-    razorpayPaymentId: data.razorpay_payment_id,
-    razorpaySignature: data.razorpay_signature,
-  });
+  try {
+    await paymentSuccessApi({
+      bookingId,
+      paymentMethod: "RAZORPAY",
+      razorpayOrderId: data.razorpay_order_id,
+      razorpayPaymentId: data.razorpay_payment_id,
+      razorpaySignature: data.razorpay_signature,
+    });
 
-  Alert.alert("Success", "Payment completed");
-  navigation.replace("BookingCompleted", { bookingId });
+    Alert.alert("Success", "Payment completed");
+    resetBookingState?.();
+    navigation.replace("BookingCompleted", { bookingId });
+  } catch (err: any) {
+    Alert.alert("Payment Verification Error", err?.response?.data?.message || "Failed to confirm payment");
+  }
 };
 
 

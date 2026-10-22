@@ -16,14 +16,11 @@ export const useTeamRequests = () => {
         TeamRequestAPI.getMyTeam(), // ✅ NEW
       ]);
 
-      console.log("TEAM REQUEST API RESPONSE:", reqRes);
-      console.log("MY TEAM API RESPONSE:", myTeamRes);
-
       setRequests(reqRes.teams || []);
       setMyTeam(myTeamRes.team || null);
 
     } catch (err) {
-      console.log("Team request load error:", err);
+      // Ignore team request load error
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useContext } from "react";
+import React, { createContext, useEffect, useState, useContext, useRef, useCallback, useMemo } from "react";
 import { BookingAPI, BookingHistoryResponse, Booking } from "@/api/profile.api";
 import { AuthContext } from "./AuthContext";
 
@@ -37,7 +37,10 @@ export const BookingHistoryProvider = ({
   const [totalBookings, setTotalBookings] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const loadBookings = async () => {
+  const isFetchingRef = useRef(false);
+  const lastFetchTimeRef = useRef(0);
+
+  const loadBookings = useCallback(async (force = false) => {
     if (!userToken) {
       setBookings([]);
       setStats(null);
@@ -47,23 +50,32 @@ export const BookingHistoryProvider = ({
       setLoading(false);
       return;
     }
+
+    const now = Date.now();
+    // Guard against simultaneous in-flight calls and throttle rapid automated invocations
+    if (isFetchingRef.current) return;
+    if (!force && now - lastFetchTimeRef.current < 2500) return;
+
     try {
+      isFetchingRef.current = true;
+      lastFetchTimeRef.current = now;
       setLoading(true);
       const data = await BookingAPI.getRecentBookings();
 
-      if (data.success) {
+      if (data && data.success) {
         setBookings(data.bookings || []);
-        setStats(data.stats);
-        setCharts(data.charts);
-        setHighestEarning(data.highestEarning);
-        setTotalBookings(data.totalBookings);
+        setStats(data.stats || null);
+        setCharts(data.charts || null);
+        setHighestEarning(data.highestEarning || null);
+        setTotalBookings(data.totalBookings || 0);
       }
     } catch (err) {
-      console.log("❌ Booking history load error:", err);
+      // Ignore booking history load error
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
-  };
+  }, [userToken]);
 
   useEffect(() => {
     if (userToken) {
@@ -75,20 +87,27 @@ export const BookingHistoryProvider = ({
       setHighestEarning(null);
       setTotalBookings(0);
     }
-  }, [userToken]);
+  }, [userToken, loadBookings]);
+
+  const refresh = useCallback(async () => {
+    await loadBookings(true);
+  }, [loadBookings]);
+
+  const contextValue = useMemo(
+    () => ({
+      bookings,
+      stats,
+      charts,
+      highestEarning,
+      totalBookings,
+      loading,
+      refresh,
+    }),
+    [bookings, stats, charts, highestEarning, totalBookings, loading, refresh]
+  );
 
   return (
-    <BookingHistoryContext.Provider
-      value={{
-        bookings,
-        stats,
-        charts,
-        highestEarning,
-        totalBookings,
-        loading,
-        refresh: loadBookings,
-      }}
-    >
+    <BookingHistoryContext.Provider value={contextValue}>
       {children}
     </BookingHistoryContext.Provider>
   );

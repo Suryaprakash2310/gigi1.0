@@ -1,5 +1,6 @@
 import React from "react";
 import { SafeAreaView, View, StyleSheet } from "react-native";
+import { theme } from "../../theme/theme";
 
 export const Screen: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -14,7 +15,7 @@ export const Screen: React.FC<{ children: React.ReactNode }> = ({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
+    backgroundColor: theme.colors.background,
   },
   container: {
     flex: 1,

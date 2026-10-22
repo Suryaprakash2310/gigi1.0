@@ -21,10 +21,8 @@ export const playBookingSound = async () => {
 
     // Start vibration pattern: 500ms vibrate, 500ms pause, repeat
     Vibration.vibrate([500, 500], true);
-
-    console.log("🔊 Booking alert sound started");
   } catch (err) {
-    console.log("🔊 Sound play error:", err);
+    // Ignore sound play error
   }
 };
 
@@ -41,9 +39,7 @@ export const stopBookingSound = async () => {
     await sound.stopAsync();
     await sound.unloadAsync();
     sound = null;
-
-    console.log("🔇 Booking alert sound stopped");
   } catch (err) {
-    console.log("🔇 Sound stop error:", err);
+    // Ignore sound stop error
   }
 };

@@ -12,6 +12,7 @@ import {
 interface OtpInputProps {
   otpLength?: number;
   onOtpComplete: (otp: string) => void;
+  onOtpChange?: (otp: string) => void;
   resendEnabled?: boolean;
   resendTime?: number; // in seconds
   onResend?: () => void;
@@ -28,6 +29,7 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
   ({
     otpLength = 4,
     onOtpComplete,
+    onOtpChange,
     resendEnabled = true,
     resendTime = 60,
     onResend,
@@ -54,6 +56,7 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
     useImperativeHandle(ref, () => ({
       reset: () => {
         setOtp(Array(otpLength).fill(''));
+        onOtpChange?.('');
         inputRefs.current[0]?.focus();
       },
       setValue: (value: string) => {
@@ -61,6 +64,7 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
         const newOtp = Array(otpLength).fill('');
         digits.forEach((d, i) => (newOtp[i] = d));
         setOtp(newOtp);
+        onOtpChange?.(newOtp.join(''));
         if (digits.length === otpLength) {
           onOtpComplete(digits.join(''));
         }
@@ -84,8 +88,10 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
           newOtp[i + index] = chars[i];
         }
         setOtp(newOtp);
-        if (newOtp.join('').length === otpLength) {
-          onOtpComplete(newOtp.join(''));
+        const combined = newOtp.join('');
+        onOtpChange?.(combined);
+        if (combined.length === otpLength) {
+          onOtpComplete(combined);
           Keyboard.dismiss();
         } else {
           inputRefs.current[Math.min(index + chars.length, otpLength - 1)]?.focus();
@@ -93,28 +99,33 @@ const OtpInput = forwardRef<OtpInputRef, OtpInputProps>(
         return;
       }
 
-
-
       const newOtp = [...otp];
       newOtp[index] = text;
 
       setOtp(newOtp);
+      const combined = newOtp.join('');
+      onOtpChange?.(combined);
 
       if (text && index < otpLength - 1) {
         inputRefs.current[index + 1]?.focus();
       }
 
-      if (newOtp.join('').length === otpLength) {
-        onOtpComplete(newOtp.join(''));
+      if (combined.length === otpLength) {
+        onOtpComplete(combined);
         Keyboard.dismiss();
-
       }
     };
 
     // Handle backspace
     const handleKeyPress = (e: any, index: number) => {
-      if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-        inputRefs.current[index - 1]?.focus();
+      if (e.nativeEvent.key === 'Backspace') {
+        if (!otp[index] && index > 0) {
+          inputRefs.current[index - 1]?.focus();
+          const newOtp = [...otp];
+          newOtp[index - 1] = '';
+          setOtp(newOtp);
+          onOtpChange?.(newOtp.join(''));
+        }
       }
     };
 

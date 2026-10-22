@@ -19,6 +19,7 @@ export default function PhoneNumberScreen() {
   const navigation = useNavigation<PhoneNavProp>();
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [pendingNotice, setPendingNotice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleGetOtp = async () => {
@@ -31,11 +32,11 @@ export default function PhoneNumberScreen() {
       return;
     }
     setError('');
+    setPendingNotice('');
     
     try {
       setLoading(true);
       // 1. Verify existence with backend
-      console.log('Verifying employee existence...');
       await AuthAPI.sendOtp(phone);
 
       // 2. Trigger Firebase SMS OTP
@@ -47,14 +48,22 @@ export default function PhoneNumberScreen() {
         return;
       }
 
-      console.log('Sending Firebase OTP to +91' + phone);
       const authInstance = getAuth();
       const confirmation = await signInWithPhoneNumber(authInstance, `+91${phone}`);
-      setConfirmationResult(confirmation);
+      setConfirmationResult(confirmation as any);
       navigation.navigate('otp', { phone });
     } catch (e: any) {
       console.error('Failed to authenticate:', e);
-      if (e.code === 'auth/too-many-requests') {
+      const status = e.response?.status;
+      const backendMsg = e.response?.data?.message;
+
+      if (status === 403 || (backendMsg && backendMsg.toLowerCase().includes('approval'))) {
+        const approvalText =
+          backendMsg ||
+          'Your account is pending admin approval (verification takes 2-3 days). You can login once the admin approves your account.';
+        setPendingNotice(approvalText);
+        Alert.alert('Account Pending Approval (2–3 Days)', approvalText);
+      } else if (e.code === 'auth/too-many-requests') {
         Alert.alert('Verification Failed', 'Too many requests. Please try again later.');
       } else if (e.code === 'auth/invalid-phone-number') {
         Alert.alert('Verification Failed', 'Invalid phone number.');
@@ -64,7 +73,7 @@ export default function PhoneNumberScreen() {
           'Firebase Play Integrity check failed. Please ensure the app SHA-1/SHA-256 fingerprints are added in Firebase Console.'
         );
       } else {
-        const errorMsg = e.response?.data?.message || e.message || 'Verification service error';
+        const errorMsg = backendMsg || e.message || 'Verification service error';
         Alert.alert('Verification Failed', errorMsg);
       }
     } finally {
@@ -74,7 +83,7 @@ export default function PhoneNumberScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -117,6 +126,23 @@ export default function PhoneNumberScreen() {
                 />
               </View>
             </View>
+
+            {pendingNotice ? (
+              <View style={{
+                backgroundColor: '#FFFBEB',
+                borderColor: '#FDE68A',
+                borderWidth: 1,
+                borderRadius: 12,
+                padding: 14,
+              }}>
+                <Text style={{ color: '#92400E', fontWeight: '700', fontSize: 13, marginBottom: 4 }}>
+                  Pending Admin Approval (2–3 Days Verification)
+                </Text>
+                <Text style={{ color: '#B45309', fontSize: 12, lineHeight: 18 }}>
+                  {pendingNotice}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.buttonWrapper}>

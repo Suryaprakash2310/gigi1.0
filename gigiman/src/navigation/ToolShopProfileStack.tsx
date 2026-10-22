@@ -19,7 +19,7 @@ export type ToolShopProfileStackParamList = {
     EditProfile: undefined;
     RecentBookingHistory: undefined;
     Support: undefined;
-    RaiseIssue: { category?: string, bookingId?: string };
+    RaiseIssue: { category?: string; bookingId?: string; bookingNumber?: string };
     SupportTickets: undefined;
     TicketDetail: { ticketId: string };
     ProfileDetails: undefined;

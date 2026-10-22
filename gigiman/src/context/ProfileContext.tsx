@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, ReactNode, useContext } from "react";
+import React, { createContext, useEffect, useState, ReactNode, useContext, useCallback, useMemo, useRef } from "react";
 import { ProfileAPI } from "@/api/profile.api";
 import { AuthContext } from "./AuthContext";
 
@@ -18,6 +18,29 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const { userToken } = useContext(AuthContext);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const isFetchingRef = useRef(false);
+
+  const loadProfile = useCallback(async () => {
+    if (!userToken) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+    if (isFetchingRef.current) return;
+
+    try {
+      isFetchingRef.current = true;
+      setLoading(true);
+      const employee = await ProfileAPI.getProfile(userToken);
+      setProfile(employee);
+    } catch (err) {
+      setProfile(null);
+      console.error("❌ Profile load error:", err);
+    } finally {
+      isFetchingRef.current = false;
+      setLoading(false);
+    }
+  }, [userToken]);
 
   // Clear profile immediately when userToken changes (prevents stale data)
   useEffect(() => {
@@ -25,30 +48,15 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     if (userToken) {
       loadProfile();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userToken]);
+  }, [userToken, loadProfile]);
 
-  const loadProfile = async () => {
-    if (!userToken) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const employee = await ProfileAPI.getProfile(userToken);
-      console.log("✅ Profile loaded:", employee);
-      setProfile(employee);
-    } catch (err) {
-      setProfile(null);
-      console.error("❌ Profile load error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const contextValue = useMemo(
+    () => ({ profile, loading, refreshProfile: loadProfile }),
+    [profile, loading, loadProfile]
+  );
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, refreshProfile: loadProfile }}>
+    <ProfileContext.Provider value={contextValue}>
       {children}
     </ProfileContext.Provider>
   );

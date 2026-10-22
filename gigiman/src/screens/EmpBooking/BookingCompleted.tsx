@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
+import { useProviderBooking } from '@/context/ProviderBookingContext';
 
 const { width } = Dimensions.get('window');
 
@@ -18,27 +20,51 @@ export default function BookingCompleted() {
   const scale = useRef(new Animated.Value(0.6)).current;
   const fade = useRef(new Animated.Value(0)).current;
   const [countdown, setCountdown] = useState(5);
+  const { resetBookingState } = useProviderBooking();
+
+  const handleGoHome = useCallback(() => {
+    resetBookingState?.();
+    // Reset EmpBookingStack so BookingCompleted is not retained in stack history
+    nav.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Booking' }],
+      })
+    );
+    // Navigate to Home tab
+    nav.navigate('Home');
+  }, [nav, resetBookingState]);
 
   useEffect(() => {
     Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
     Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
 
-    const interval = setInterval(() => setCountdown((c) => c - 1), 1000);
-    const timeout = setTimeout(() => nav.navigate('Home'), 5000);
+    const interval = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+
+    const timeout = setTimeout(() => {
+      handleGoHome();
+    }, 5000);
+
+    const backAction = () => {
+      handleGoHome();
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      backHandler.remove();
     };
-  }, [fade, scale, nav]);
-
-  useEffect(() => {
-    if (countdown <= 0) setCountdown(0);
-  }, [countdown]);
-
-  function goNow() {
-    nav.navigate('Home');
-  }
+  }, [fade, scale, handleGoHome]);
 
   return (
     <View style={styles.container}>
@@ -52,7 +78,7 @@ export default function BookingCompleted() {
           <Text style={styles.metaText}>Redirecting to dashboard in</Text>
           <Text style={[styles.metaText, styles.countdown]}> {countdown}s</Text>
         </View>
-        <TouchableOpacity style={styles.button} onPress={goNow} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.button} onPress={handleGoHome} activeOpacity={0.8}>
           <Text style={styles.buttonText}>Go to Dashboard</Text>
         </TouchableOpacity>
       </Animated.View>
